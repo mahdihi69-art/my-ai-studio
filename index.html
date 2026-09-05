@@ -1,116 +1,213 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AI Studio</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Tahoma, sans-serif; }
-    body { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); color: #fff; min-height: 100vh; padding: 20px; }
-    .container { max-width: 600px; margin: 0 auto; }
-    h1 { text-align: center; color: #00d4ff; margin-bottom: 10px; font-size: 26px; }
-    .subtitle { text-align: center; color: #aaa; font-size: 13px; margin-bottom: 30px; }
-    .card { background: rgba(255,255,255,0.05); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); }
-    textarea { width: 100%; background: rgba(0,0,0,0.4); border: 2px solid rgba(255,255,255,0.2); color: white; padding: 15px; border-radius: 12px; font-size: 15px; margin-bottom: 15px; min-height: 120px; }
-    textarea:focus { outline: none; border-color: #00d4ff; }
-    button { background: linear-gradient(45deg, #00d4ff, #0066ff); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; }
-    button:disabled { background: #555; cursor: not-allowed; }
-    .status-box { text-align: center; padding: 15px; background: rgba(255,193,7,0.1); border-radius: 12px; margin-bottom: 20px; color: #ffc107; font-size: 14px; line-height: 1.6; }
-    .status-box.ready { background: rgba(0,255,136,0.1); color: #00ff88; border: 1px solid #00ff88; }
-    .status-box.error { background: rgba(255,0,0,0.1); color: #ff4444; border: 1px solid #ff4444; }
-    .loading { display: none; text-align: center; padding: 30px; color: #00d4ff; }
-    .spinner { border: 4px solid rgba(255,255,255,0.1); border-left-color: #00d4ff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .result { display: none; background: rgba(0,255,136,0.1); border-right: 4px solid #00ff88; padding: 20px; border-radius: 12px; margin-top: 20px; line-height: 1.8; font-size: 15px; white-space: pre-wrap; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مدیر مالی هوشمند</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Tahoma, 'Segoe UI', sans-serif; }
+        body { background: #f4f6f9; color: #333; min-height: 100vh; padding: 20px; padding-bottom: 80px; }
+        
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h1 { color: #2c3e50; font-size: 24px; margin-bottom: 5px; }
+        .balance-card { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; padding: 25px; border-radius: 20px; 
+            text-align: center; box-shadow: 0 10px 30px rgba(118, 75, 162, 0.3);
+            margin-bottom: 25px;
+        }
+        .balance-label { font-size: 14px; opacity: 0.9; margin-bottom: 5px; }
+        .balance-amount { font-size: 32px; font-weight: bold; direction: ltr; }
+
+        .input-group { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 10px; font-size: 15px; }
+        .btn-add { width: 100%; background: #667eea; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        
+        .voice-btn { 
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: #ff4757; color: white; border: none; width: 60px; height: 60px;
+            border-radius: 50%; font-size: 24px; box-shadow: 0 5px 20px rgba(255, 71, 87, 0.4);
+            cursor: pointer; z-index: 100; display: flex; align-items: center; justify-content: center;
+        }
+        .voice-btn.listening { animation: pulse 1.5s infinite; background: #ff6b81; }
+        @keyframes pulse { 0% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.1); } 100% { transform: translateX(-50%) scale(1); } }
+
+        .history-list { list-style: none; }
+        .history-item { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .item-info h4 { font-size: 15px; margin-bottom: 3px; }
+        .item-info span { font-size: 12px; color: #888; }
+        .item-amount { font-weight: bold; color: #e74c3c; direction: ltr; }
+        
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 25px; border-radius: 30px; font-size: 14px; opacity: 0; transition: 0.3s; pointer-events: none; z-index: 200; }
+        .toast.show { opacity: 1; top: 30px; }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🤖 AI Studio</h1>
-    <p class="subtitle">نسخه آفلاین - بدون نیاز به سرور</p>
-    
-    <div class="status-box" id="status">
-      ⏳ در حال آماده‌سازی...<br>
-      <small>(بار اول حدود ۲ دقیقه صبر کنید)</small>
+
+    <div class="header">
+        <h1>💰 مدیر مالی هوشمند</h1>
+        <p style="color:#888; font-size:13px;">روی دکمه میکروفون بزنید تا گزارش بگیرید</p>
     </div>
-    
-    <div class="card">
-      <textarea id="prompt" placeholder="سوال خود را بنویسید...&#10;&#10;مثال: یک داستان کوتاه درباره ربات شجاع"></textarea>
-      <button id="btn" onclick="generate()" disabled>⏳ در حال بارگذاری...</button>
-      
-      <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <p>در حال فکر کردن...</p>
-      </div>
-      
-      <div class="result" id="result"></div>
+
+    <div class="balance-card">
+        <div class="balance-label">مانده حساب شما</div>
+        <div class="balance-amount" id="totalBalance">0 تومان</div>
     </div>
-  </div>
 
-  <script type="module">
-    import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
+    <div class="input-group">
+        <input type="text" id="descInput" placeholder="توضیح خرید (مثلا: ناهار)">
+        <input type="number" id="amountInput" placeholder="مبلغ (تومان)" inputmode="numeric">
+        <button class="btn-add" onclick="addExpense()">➕ ثبت هزینه</button>
+    </div>
 
-    let engine = null;
+    <ul class="history-list" id="historyList"></ul>
 
-    async function init() {
-      const statusBox = document.getElementById('status');
-      const btn = document.getElementById('btn');
-      
-      try {
-        // مدل جدید و معتبر (Qwen 2.5)
-        const model = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+    <button class="voice-btn" id="voiceBtn" onclick="toggleVoiceAssistant()">🎤</button>
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // --- مدیریت داده‌ها ---
+        let expenses = JSON.parse(localStorage.getItem('myExpenses')) || [];
         
-        engine = await CreateMLCEngine(model, {
-          initProgressCallback: (progress) => {
-            statusBox.innerHTML = `⏳ ${progress.text}<br><small>لطفاً صبر کنید</small>`;
-          }
-        });
-        
-        statusBox.className = "status-box ready";
-        statusBox.innerHTML = "✅ آماده است!";
-        btn.disabled = false;
-        btn.innerHTML = "🚀 ارسال";
-      } catch (err) {
-        statusBox.className = "status-box error";
-        statusBox.innerHTML = "❌ خطا: " + err.message;
-      }
-    }
+        function saveData() {
+            localStorage.setItem('myExpenses', JSON.stringify(expenses));
+            renderUI();
+        }
 
-    window.generate = async function() {
-      const promptText = document.getElementById('prompt').value.trim();
-      if (!promptText) { alert('متنی بنویسید!'); return; }
+        function addExpense(desc = null, amount = null) {
+            const d = desc || document.getElementById('descInput').value.trim();
+            const a = amount ? parseInt(amount) : parseInt(document.getElementById('amountInput').value);
 
-      const btn = document.getElementById('btn');
-      const loading = document.getElementById('loading');
-      const result = document.getElementById('result');
+            if (!d || isNaN(a) || a <= 0) {
+                showToast("لطفاً توضیح و مبلغ صحیح وارد کنید");
+                return;
+            }
 
-      btn.disabled = true;
-      loading.style.display = 'block';
-      result.style.display = 'none';
+            expenses.unshift({ desc: d, amount: a, date: new Date().toLocaleDateString('fa-IR') });
+            saveData();
+            
+            if(!desc) { // اگر دستی وارد شده فیلدها پاک شوند
+                document.getElementById('descInput').value = '';
+                document.getElementById('amountInput').value = '';
+                showToast("✅ هزینه با موفقیت ثبت شد");
+            }
+        }
 
-      try {
-        const reply = await engine.chat.completions.create({
-          messages: [
-            { role: "system", content: "You are a helpful assistant." },
-            { role: "user", content: promptText }
-          ],
-          temperature: 0.7,
-          max_tokens: 500
-        });
+        function renderUI() {
+            const total = expenses.reduce((sum, item) => sum + item.amount, 0);
+            document.getElementById('totalBalance').innerText = total.toLocaleString('fa-IR') + ' تومان';
+            
+            const list = document.getElementById('historyList');
+            list.innerHTML = expenses.map(item => `
+                <li class="history-item">
+                    <div class="item-info">
+                        <h4>${item.desc}</h4>
+                        <span>${item.date}</span>
+                    </div>
+                    <div class="item-amount">-${item.amount.toLocaleString('fa-IR')}</div>
+                </li>
+            `).join('');
+        }
 
-        loading.style.display = 'none';
-        btn.disabled = false;
-        result.style.display = 'block';
-        result.innerHTML = '<strong>✨ پاسخ:</strong><br><br>' + reply.choices[0].message.content;
-        
-      } catch (err) {
-        loading.style.display = 'none';
-        btn.disabled = false;
-        alert('خطا: ' + err.message);
-      }
-    };
+        // --- دستیار صوتی هوشمند ---
+        const voiceBtn = document.getElementById('voiceBtn');
+        let recognition;
 
-    init();
-  </script>
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRec();
+            recognition.lang = 'fa-IR';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript.toLowerCase();
+                processVoiceCommand(transcript);
+                stopListening();
+            };
+
+            recognition.onerror = () => stopListening();
+            recognition.onend = () => stopListening();
+        } else {
+            voiceBtn.style.display = 'none';
+            showToast("مرورگر شما از دستیار صوتی پشتیبانی نمی‌کند");
+        }
+
+        function toggleVoiceAssistant() {
+            if (!recognition) return;
+            try {
+                recognition.start();
+                voiceBtn.classList.add('listening');
+                speak("گوش می‌دهم... چه کمکی از دست من برمی‌آید؟");
+            } catch(e) { recognition.stop(); }
+        }
+
+        function stopListening() {
+            voiceBtn.classList.remove('listening');
+        }
+
+        function processVoiceCommand(cmd) {
+            showToast(`شنیدم: "${cmd}"`);
+            
+            // منطق هوشمند تحلیل دستور
+            if (cmd.includes('گزارش') || cmd.includes('وضعیت') || cmd.includes('حساب')) {
+                giveReport();
+            } else if (cmd.includes('هزینه') || cmd.includes('خرید') || cmd.includes('ثبت')) {
+                // تلاش برای استخراج مبلغ از گفتار
+                const numbers = cmd.match(/\d+/g);
+                if (numbers && numbers.length > 0) {
+                    const amount = parseInt(numbers[numbers.length - 1]); // آخرین عدد معمولا مبلغ است
+                    const desc = cmd.replace(/[0-9]/g, '').replace(/هزار|تومان|ریال|ثبت|کردم|خرید|هزینه/g, '').trim() || "خرید صوتی";
+                    addExpense(desc, amount);
+                    speak(`${amount.toLocaleString('fa-IR')} تومان بابت ${desc} ثبت شد.`);
+                } else {
+                    speak("متوجه مبلغ نشدم. لطفاً بگویید مثلا: خرید ناهار بیست هزار تومان");
+                }
+            } else if (cmd.includes('آخرین') || cmd.includes('جدیدترین')) {
+                if (expenses.length > 0) {
+                    const last = expenses[0];
+                    speak(`آخرین خرید شما ${last.desc} به مبلغ ${last.amount.toLocaleString('fa-IR')} تومان بوده است.`);
+                } else {
+                    speak("هنوز هیچ خریدی ثبت نکرده‌اید.");
+                }
+            } else {
+                speak("دستور را متوجه نشدم. بگویید: گزارش، آخرین خرید، یا ثبت هزینه.");
+            }
+        }
+
+        function giveReport() {
+            const total = expenses.reduce((sum, i) => sum + i.amount, 0);
+            const todayStr = new Date().toLocaleDateString('fa-IR');
+            const todayTotal = expenses.filter(i => i.date === todayStr).reduce((sum, i) => sum + i.amount, 0);
+            
+            let msg = `مانده کل حساب شما ${total.toLocaleString('fa-IR')} تومان است. `;
+            if (todayTotal > 0) {
+                msg += `امروز ${todayTotal.toLocaleString('fa-IR')} تومان خرج کرده‌اید.`;
+            } else {
+                msg += "امروز هنوز خرجی نداشته‌اید.";
+            }
+            speak(msg);
+        }
+
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'fa-IR';
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // شروع اولیه
+        renderUI();
+    </script>
 </body>
 </html>
