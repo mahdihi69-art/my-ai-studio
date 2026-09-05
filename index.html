@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f0c29">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AI Studio">
   <title>AI Studio - آفلاین</title>
+  <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQUkgU3R1ZGlvIiwic2hvcnRfbmFtZSI6IkFJIFN0dWRpbyIsInN0YXJ0X3VybCI6Ii4iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMGYwYzI5IiwidGhlbWVfY29sb3IiOiIjMDBkNGZmIiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2Uvc3ZnK3htbDtiYXNlNjQsUEhOMlp5QjNhV1IwYUQwaU1qQXdJaUJvWldsbmFIUTlJalV3SWlCb1pXbG5hSFE5SWpVd0lpQm1hV3hzUFNJak1EQXdJaUIwY21GdWMyRmpkR2x2YmkxcFpHVnVkR2wwZVQwaU1qQXdJaUJtYVd4c1BTSWpNREF3SWlCMGJ5QnBjeUJ6YjJOclpYUnpMbU52YlE9PSIsInNpemVzIjoiMTkyeDE5MiIsInR5cGUiOiJpbWFnZS9zdmcreG1sIn1dfQ==">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: Tahoma, 'Segoe UI', sans-serif; }
     body { 
@@ -89,6 +94,20 @@
       font-size: 15px;
       white-space: pre-wrap;
     }
+    
+    .install-btn {
+      display: none;
+      background: linear-gradient(45deg, #00ff88, #00cc6a);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 15px;
+    }
   </style>
 </head>
 <body>
@@ -103,7 +122,8 @@
     
     <div class="card">
       <textarea id="prompt" placeholder="سوال خود را اینجا بنویسید...&#10;&#10;مثال: یک داستان کوتاه درباره یک ربات شجاع بنویس."></textarea>
-      <button id="btn" onclick="generate()" disabled>⏳ در حال بارگذاری...</button>
+      <button id="btn" onclick="generate()" disabled> در حال بارگذاری...</button>
+      <button class="install-btn" id="installBtn" onclick="installApp()">📱 نصب اپلیکیشن روی گوشی</button>
       
       <div class="loading" id="loading">
         <div class="spinner"></div>
@@ -115,17 +135,37 @@
   </div>
 
   <script type="module">
-    // استفاده از کتابخانه WebLLM برای اجرای هوش مصنوعی داخل مرورگر
     import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
 
     let engine = null;
+    let deferredPrompt = null;
+
+    // PWA Install
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('installBtn').style.display = 'block';
+    });
+
+    window.installApp = async function() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          alert('✅ اپلیکیشن نصب شد!');
+        }
+        deferredPrompt = null;
+        document.getElementById('installBtn').style.display = 'none';
+      } else {
+        alert('برای نصب: منوی مرورگر → Add to Home Screen');
+      }
+    };
 
     async function init() {
       const statusBox = document.getElementById('status');
       const btn = document.getElementById('btn');
       
       try {
-        // استفاده از یک مدل بسیار سبک و سریع (حدود ۴۰۰ مگابایت)
         const model = "Qwen1.5-0.5B-Chat-q4f16_1-MLC";
         
         engine = await CreateMLCEngine(model, {
@@ -144,7 +184,6 @@
       }
     }
 
-    // تابعی که دکمه HTML آن را صدا می‌زند
     window.generate = async function() {
       const promptText = document.getElementById('prompt').value.trim();
       if (!promptText) {
@@ -182,7 +221,6 @@
       }
     };
 
-    // شروع فرآیند به محض باز شدن صفحه
     init();
   </script>
 </body>
