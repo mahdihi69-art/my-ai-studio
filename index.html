@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دستیار صوتی هوشمند</title>
+    <title>دستیار هوش مصنوعی صوتی</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Tahoma, sans-serif; }
         
@@ -35,6 +35,7 @@
         
         .assistant-avatar.speaking { animation: pulse 0.5s infinite; background: #00b894; }
         .assistant-avatar.listening { animation: pulse 1s infinite; background: #ff7675; }
+        .assistant-avatar.thinking { animation: pulse 0.3s infinite; background: #fdcb6e; }
         
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
@@ -70,7 +71,7 @@
             border-radius: 10px;
             padding: 15px;
             margin: 20px 0;
-            max-height: 250px;
+            max-height: 300px;
             overflow-y: auto;
         }
         
@@ -79,6 +80,7 @@
             margin-bottom: 8px;
             border-radius: 8px;
             font-size: 14px;
+            line-height: 1.5;
         }
         
         .chat-message.user { background: #0f3460; text-align: right; }
@@ -184,7 +186,8 @@
 <body>
 
     <div class="header">
-        <h1>🎙️ دستیار صوتی هوشمند</h1>
+        <h1>🤖 دستیار هوش مصنوعی صوتی</h1>
+        <p style="color: #888; font-size: 12px;">نسخه هوشمند با DeepSeek</p>
     </div>
     
     <div class="assistant-avatar" id="assistantAvatar">🤖</div>
@@ -215,11 +218,14 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        // تنظیمات DeepSeek API
+        const DEEPSEEK_API_KEY = 'sk-XXXXXXXXXXXXXXXXXXXX'; // API key خودت رو اینجا بذار
+        const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+        
         let expenses = JSON.parse(localStorage.getItem('voiceFinanceDB')) || [];
-        let convState = 'IDLE';
-        let tempData = {};
         let recognition = null;
         let isListening = false;
+        let conversationHistory = [];
         
         function convertNumbers(str) {
             const persian = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
@@ -235,7 +241,6 @@
             return num.toString().replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
         }
         
-        // تابع ثبت با تاریخ خودکار
         function addExpense(desc, amount, note = '') {
             if (!desc || isNaN(amount) || amount <= 0) return false;
             
@@ -301,10 +306,8 @@
             addChatMessage(text, false);
             document.getElementById('statusBox').innerText = text;
             
-            // انیمیشن صحبت
             document.getElementById('assistantAvatar').classList.add('speaking');
             
-            // استفاده از speechSynthesis
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 
@@ -314,7 +317,6 @@
                 utterance.pitch = 1;
                 utterance.volume = 1;
                 
-                // انتخاب صدای فارسی
                 const voices = window.speechSynthesis.getVoices();
                 const faVoice = voices.find(v => v.lang.includes('fa'));
                 const arVoice = voices.find(v => v.lang.includes('ar'));
@@ -327,7 +329,7 @@
                 
                 utterance.onend = () => {
                     document.getElementById('assistantAvatar').classList.remove('speaking');
-                    if (convState === 'IDLE') {
+                    if (conversationHistory.length === 0) {
                         document.getElementById('statusBox').innerText = 'آماده دستور جدید';
                     }
                 };
@@ -336,7 +338,6 @@
                     console.log('Speech error:', e);
                     document.getElementById('assistantAvatar').classList.remove('speaking');
                     
-                    // تلاش مجدد
                     setTimeout(() => {
                         const retry = new SpeechSynthesisUtterance(text);
                         retry.lang = 'fa-IR';
@@ -349,6 +350,124 @@
                     window.speechSynthesis.speak(utterance);
                 }, 100);
             }
+        }
+        
+        // ارتباط با DeepSeek
+        async function askDeepSeek(userMessage) {
+            document.getElementById('assistantAvatar').classList.add('thinking');
+            document.getElementById('statusBox').innerText = '🤔 در حال فکر کردن...';
+            
+            // ساخت context از داده‌های مالی
+            const expensesContext = expenses.slice(0, 10).map(e => 
+                `${e.desc}: ${e.amount} تومان (${e.date})`
+            ).join('\n');
+            
+            const systemPrompt = `تو یک دستیار مالی هوشمند فارسی زبان هستی. 
+            وظایف تو:
+            1. ثبت هزینه‌ها (تشخیص مبلغ و عنوان از صحبت کاربر)
+            2. گزارش‌دهی مالی
+            3. پاسخ به سوالات مالی
+            4. محاسبه جمع هزینه‌ها
+            
+            داده‌های فعلی کاربر:
+            ${expensesContext || 'هنوز هزینه‌ای ثبت نشده'}
+            
+            اگر کاربر خواست هزینه ثبت کنی، مبلغ و عنوان را تشخیص بده و بگو ثبت شد.
+            همیشه فارسی و مختصر جواب بده.`;
+            
+            try {
+                const response = await fetch(DEEPSEEK_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            ...conversationHistory.slice(-5),
+                            { role: 'user', content: userMessage }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 150
+                    })
+                });
+                
+                const data = await response.json();
+                const aiResponse = data.choices[0].message.content;
+                
+                conversationHistory.push(
+                    { role: 'user', content: userMessage },
+                    { role: 'assistant', content: aiResponse }
+                );
+                
+                document.getElementById('assistantAvatar').classList.remove('thinking');
+                return aiResponse;
+                
+            } catch (error) {
+                console.error('DeepSeek error:', error);
+                document.getElementById('assistantAvatar').classList.remove('thinking');
+                
+                // اگر DeepSeek در دسترس نبود، پاسخ محلی بده
+                return handleLocalCommand(userMessage);
+            }
+        }
+        
+        // پردازش محلی (fallback)
+        function handleLocalCommand(cmd) {
+            cmd = convertNumbers(cmd);
+            
+            if (cmd.includes('گزارش') || cmd.includes('وضعیت')) {
+                if (expenses.length === 0) return 'خریدی ثبت نشده';
+                const total = expenses.reduce((sum, i) => sum + i.amount, 0);
+                return 'جمع کل: ' + toPersian(total.toLocaleString('fa-IR')) + ' تومان';
+            }
+            
+            if (cmd.includes('ثبت') || cmd.includes('خرید')) {
+                const nums = cmd.match(/\d+/g);
+                if (nums) {
+                    let amount = parseInt(nums[nums.length-1]);
+                    if (cmd.includes('هزار')) amount *= 1000;
+                    let desc = cmd.replace(/[0-9۰-۹]/g, '').replace(/هزار|میلیون|تومان|ثبت|خرید|هزینه/g, '').trim() || 'خرید';
+                    addExpense(desc, amount);
+                    return toPersian(amount.toLocaleString('fa-IR')) + ' تومان بابت ' + desc + ' ثبت شد';
+                }
+            }
+            
+            return 'متوجه نشدم. لطفاً واضح‌تر بگویید';
+        }
+        
+        // پردازش دستور با DeepSeek
+        async function processCommand(cmd) {
+            cmd = convertNumbers(cmd);
+            console.log('Processing:', cmd);
+            
+            addChatMessage(cmd, true);
+            
+            // اول سعی کن دستور محلی رو تشخیص بدی
+            if (cmd.includes('ثبت') || cmd.includes('خرید') || cmd.includes('هزینه')) {
+                const nums = cmd.match(/\d+/g);
+                if (nums && nums.length > 0) {
+                    let amount = parseInt(nums[nums.length-1]);
+                    if (cmd.includes('هزار')) amount *= 1000;
+                    if (cmd.includes('میلیون')) amount *= 1000000;
+                    
+                    let desc = cmd.replace(/[0-9۰-۹]/g, '')
+                        .replace(/هزار|میلیون|تومان|ثبت|خرید|هزینه/g, '')
+                        .trim() || 'خرید';
+                    
+                    if (addExpense(desc, amount)) {
+                        const response = toPersian(amount.toLocaleString('fa-IR')) + ' تومان بابت ' + desc + ' ثبت شد';
+                        speak(response);
+                        return;
+                    }
+                }
+            }
+            
+            // برای بقیه موارد از DeepSeek استفاده کن
+            const aiResponse = await askDeepSeek(cmd);
+            speak(aiResponse);
         }
         
         // تنظیم تشخیص صدا
@@ -376,9 +495,7 @@
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 console.log('Heard:', transcript);
-                
-                addChatMessage(transcript, true);
-                processCommand(transcript.trim().toLowerCase());
+                processCommand(transcript.trim());
             };
             
             recognition.onerror = (event) => {
@@ -392,22 +509,12 @@
                 } else if (event.error === 'no-speech') {
                     showToast('صدایی شنیده نشد', 'error');
                 }
-                
-                document.getElementById('statusBox').innerText = 'خطا! دوباره تلاش کنید';
             };
             
             recognition.onend = () => {
                 isListening = false;
                 document.getElementById('micBtn').classList.remove('listening');
                 document.getElementById('assistantAvatar').classList.remove('listening');
-                
-                if (convState !== 'IDLE' && convState !== 'FINISHED') {
-                    setTimeout(() => {
-                        try {
-                            recognition.start();
-                        } catch(e) {}
-                    }, 500);
-                }
             };
         }
         
@@ -416,132 +523,13 @@
             
             if (isListening) {
                 recognition.stop();
-                convState = 'IDLE';
                 document.getElementById('statusBox').innerText = 'توقف شد';
             } else {
                 window.speechSynthesis.cancel();
-                convState = 'IDLE';
                 try {
                     recognition.start();
                 } catch(e) {}
             }
-        }
-        
-        // پردازش دستورات
-        function processCommand(cmd) {
-            cmd = convertNumbers(cmd);
-            console.log('Processing:', cmd);
-            
-            if (convState === 'ASK_DESC') {
-                tempData.desc = cmd;
-                convState = 'ASK_AMT';
-                speak('چقدر پرداخت کردی؟');
-                return;
-            }
-            
-            if (convState === 'ASK_AMT') {
-                const nums = cmd.match(/\d+/g);
-                if (nums && nums.length > 0) {
-                    let amount = parseInt(nums[nums.length - 1]);
-                    if (cmd.includes('هزار')) amount *= 1000;
-                    if (cmd.includes('میلیون')) amount *= 1000000;
-                    
-                    tempData.amount = amount;
-                    
-                    if (addExpense(tempData.desc, amount)) {
-                        speak(toPersian(amount.toLocaleString('fa-IR')) + ' تومان ثبت شد. توضیح داری؟');
-                        convState = 'ASK_NOTE';
-                    } else {
-                        convState = 'IDLE';
-                        speak('خطا در ثبت');
-                    }
-                } else {
-                    speak('مبلغ را نفهمیدم. دوباره بگو');
-                }
-                return;
-            }
-            
-            if (convState === 'ASK_NOTE') {
-                if (cmd.includes('نه') || cmd.includes('ندارم') || cmd.length < 3) {
-                    speak('باشه. دستور بعدی؟');
-                } else {
-                    expenses[0].note = cmd;
-                    localStorage.setItem('voiceFinanceDB', JSON.stringify(expenses));
-                    renderUI();
-                    speak('توضیح ثبت شد');
-                }
-                convState = 'IDLE';
-                return;
-            }
-            
-            // دستورات اصلی
-            if (cmd.includes('گزارش') || cmd.includes('وضعیت')) {
-                giveReport();
-            } else if (cmd.includes('آخرین')) {
-                if (expenses.length > 0) {
-                    const e = expenses[0];
-                    speak('آخرین خرید: ' + e.desc + ' ' + toPersian(e.amount.toLocaleString('fa-IR')) + ' تومان در ' + e.date);
-                } else {
-                    speak('خریدی ثبت نشده');
-                }
-            } else if (cmd.includes('ثبت') || cmd.includes('خرید') || cmd.includes('هزینه')) {
-                const nums = cmd.match(/\d+/g);
-                if (nums && nums.length > 0) {
-                    let amount = parseInt(nums[nums.length - 1]);
-                    if (cmd.includes('هزار')) amount *= 1000;
-                    
-                    let desc = cmd.replace(/[0-9۰-۹]/g, '')
-                        .replace(/هزار|میلیون|تومان|ثبت|خرید|هزینه/g, '')
-                        .trim() || 'خرید';
-                    
-                    if (addExpense(desc, amount)) {
-                        speak(toPersian(amount.toLocaleString('fa-IR')) + ' تومان بابت ' + desc + ' ثبت شد');
-                    }
-                } else {
-                    convState = 'ASK_DESC';
-                    speak('چی خریدی؟');
-                }
-            } else if (cmd.includes('سلام')) {
-                speak('سلام! چطور می‌تونم کمکت کنم؟');
-            } else if (cmd.includes('پاک')) {
-                if (confirm('همه پاک شود؟')) {
-                    expenses = [];
-                    localStorage.setItem('voiceFinanceDB', JSON.stringify(expenses));
-                    renderUI();
-                    speak('همه چیز پاک شد');
-                }
-            } else {
-                speak('نفهمیدم. بگو: ثبت هزینه، گزارش، یا آخرین خرید');
-            }
-        }
-        
-        function giveReport() {
-            if (expenses.length === 0) {
-                speak('خریدی ثبت نشده');
-                return;
-            }
-            
-            const today = new Date().toLocaleDateString('fa-IR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            
-            const todayExp = expenses.filter(i => i.date === today);
-            
-            if (todayExp.length === 0) {
-                speak('امروز خریدی نداشتی');
-                return;
-            }
-            
-            const total = todayExp.reduce((sum, i) => sum + i.amount, 0);
-            let report = 'امروز ' + toPersian(todayExp.length) + ' خرید ثبت شده. جمع: ' + toPersian(total.toLocaleString('fa-IR')) + ' تومان. ';
-            
-            todayExp.slice(0, 3).forEach((e, i) => {
-                report += toPersian(i + 1) + '. ' + e.desc + ' ' + toPersian(e.amount.toLocaleString('fa-IR')) + ' تومان. ';
-            });
-            
-            speak(report);
         }
         
         function addManualExpense() {
@@ -576,13 +564,17 @@
         renderUI();
         setupRecognition();
         
-        // بارگذاری صداها
         if ('speechSynthesis' in window) {
             window.speechSynthesis.onvoiceschanged = () => {
                 window.speechSynthesis.getVoices();
             };
             window.speechSynthesis.getVoices();
         }
+        
+        // تست صدا
+        setTimeout(() => {
+            speak('سلام! من دستیار هوش مصنوعی شما هستم');
+        }, 1000);
     </script>
 </body>
 </html>
