@@ -1,573 +1,193 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دستیار هوش مصنوعی صوتی</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Tahoma, sans-serif; }
-        
-        body { 
-            background: #1a1a2e; 
-            color: white; 
-            min-height: 100vh; 
-            padding: 20px; 
-            padding-bottom: 120px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { font-size: 24px; margin-bottom: 5px; }
-        .header p { color: #888; font-size: 12px; }
-        
-        .assistant-avatar {
-            width: 100px;
-            height: 100px;
-            margin: 20px auto;
-            border-radius: 50%;
-            background: #16213e;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 50px;
-            transition: all 0.3s;
-        }
-        
-        .assistant-avatar.speaking { animation: pulse 0.5s infinite; background: #00b894; }
-        .assistant-avatar.listening { animation: pulse 1s infinite; background: #ff7675; }
-        .assistant-avatar.thinking { animation: pulse 0.3s infinite; background: #fdcb6e; }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-        
-        .balance-card {
-            background: #16213e;
-            padding: 25px;
-            border-radius: 15px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        .balance-amount { font-size: 30px; color: #00b894; margin: 10px 0; }
-        
-        .status-box {
-            background: #0f3460;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 15px;
-            font-size: 14px;
-            min-height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            line-height: 1.6;
-        }
-        
-        .chat-box {
-            background: #16213e;
-            border-radius: 10px;
-            padding: 15px;
-            margin: 20px 0;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .chat-message {
-            padding: 10px;
-            margin-bottom: 8px;
-            border-radius: 8px;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        
-        .chat-message.user { background: #0f3460; text-align: right; }
-        .chat-message.assistant { background: #1a1a2e; border: 1px solid #00b894; color: #00b894; }
-        
-        .manual-section {
-            background: #16213e;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-        }
-        
-        input, textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #0f3460;
-            border-radius: 8px;
-            background: #1a1a2e;
-            color: white;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-        
-        .btn-add {
-            width: 100%;
-            background: #00b894;
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        
-        .mic-wrapper {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        
-        .mic-btn {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: none;
-            background: #ff7675;
-            color: white;
-            font-size: 32px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .mic-btn.listening {
-            background: #d63031;
-            box-shadow: 0 0 0 20px rgba(255, 118, 117, 0.3);
-        }
-        
-        .history-list { list-style: none; margin-top: 20px; }
-        
-        .history-item {
-            background: #16213e;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border-right: 4px solid #ff7675;
-        }
-        
-        .item-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-        }
-        
-        .item-title { font-weight: bold; }
-        .item-price { color: #ff7675; }
-        
-        .item-date {
-            color: #888;
-            font-size: 12px;
-            margin-top: 5px;
-            direction: ltr;
-            text-align: left;
-        }
-        
-        .toast {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%) translateY(-100px);
-            background: #00b894;
-            color: white;
-            padding: 15px 25px;
-            border-radius: 25px;
-            transition: 0.3s;
-            z-index: 300;
-        }
-        
-        .toast.show { transform: translateX(-50%) translateY(0); }
-        .toast.error { background: #d63031; }
-    </style>
-</head>
-<body>
-
-    <div class="header">
-        <h1>🤖 دستیار هوشمند</h1>
-        <p>صحبت کن، ثبت کن، گزارش بگیر</p>
-    </div>
+body { 
+        background: #1a1a2e; 
+        color: white; 
+        min-height: 100vh; 
+        padding: 20px; 
+        padding-bottom: 120px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
     
-    <div class="assistant-avatar" id="assistantAvatar">🤖</div>
-
-    <div class="balance-card">
-        <div>💰 موجودی حساب</div>
-        <div class="balance-amount" id="totalBalance">۰ تومان</div>
-        <div class="status-box" id="statusBox">برای شروع روی میکروفون کلیک کنید</div>
-    </div>
-
-    <div class="chat-box" id="chatBox"></div>
-
-    <div class="manual-section">
-        <h3 style="margin-bottom: 15px;">📝 ثبت دستی</h3>
-        <input type="text" id="descInput" placeholder="عنوان خرید">
-        <input type="number" id="amountInput" placeholder="مبلغ (تومان)">
-        <textarea id="noteInput" placeholder="توضیحات (اختیاری)" rows="2"></textarea>
-        <button class="btn-add" onclick="addManualExpense()">➕ ثبت</button>
-    </div>
-
-    <h3 style="margin: 20px 0;">📋 تاریخچه</h3>
-    <ul class="history-list" id="historyList"></ul>
-
-    <div class="mic-wrapper">
-        <button class="mic-btn" id="micBtn" onclick="toggleVoice()">🎤</button>
-    </div>
+    .header { text-align: center; margin-bottom: 20px; }
+    .header h1 { font-size: 24px; margin-bottom: 5px; }
+    .header p { color: #888; font-size: 12px; }
     
-    <div class="toast" id="toast"></div>
-
-    <script>
-        let expenses = JSON.parse(localStorage.getItem('voiceFinanceDB')) || [];
-        let recognition = null;
-        let isListening = false;
-        
-        function convertNumbers(str) {
-            const persian = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
-            const arabic = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
-            for(let i=0; i<10; i++) {
-                str = str.replace(new RegExp(persian[i], 'g'), i);
-                str = str.replace(new RegExp(arabic[i], 'g'), i);
-            }
-            return str;
-        }
-        
-        function toPersian(num) {
-            return num.toString().replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
-        }
-        
-        function addExpense(desc, amount, note = '') {
-            if (!desc || isNaN(amount) || amount <= 0) return false;
-            
-            const now = new Date();
-            expenses.unshift({
-                desc: desc,
-                amount: amount,
-                note: note,
-                date: now.toLocaleDateString('fa-IR'),
-                time: now.toLocaleTimeString('fa-IR', {hour:'2-digit', minute:'2-digit'}),
-                timestamp: now.getTime()
-            });
-            
-            localStorage.setItem('voiceFinanceDB', JSON.stringify(expenses));
-            renderUI();
-            return true;
-        }
-        
-        function renderUI() {
-            const total = expenses.reduce((sum, i) => sum + i.amount, 0);
-            document.getElementById('totalBalance').innerText = toPersian(total.toLocaleString('fa-IR')) + ' تومان';
-            
-            const list = document.getElementById('historyList');
-            if (expenses.length === 0) {
-                list.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">هنوز خریدی ثبت نشده</div>';
-                return;
-            }
-            
-            list.innerHTML = expenses.map(item => `
-                <li class="history-item">
-                    <div class="item-header">
-                        <span class="item-title">${item.desc}</span>
-                        <span class="item-price">${toPersian(item.amount.toLocaleString('fa-IR'))} تومان</span>
-                    </div>
-                    ${item.note ? '<div style="color:#999;font-size:12px;margin-top:5px;">📝 ' + item.note + '</div>' : ''}
-                    <div class="item-date">📅 ${item.date} - 🕐 ${item.time}</div>
-                </li>
-            `).join('');
-        }
-        
-        function addChatMessage(text, isUser = false) {
-            const chatBox = document.getElementById('chatBox');
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'chat-message ' + (isUser ? 'user' : 'assistant');
-            msgDiv.innerText = (isUser ? '👤 ' : '🤖 ') + text;
-            chatBox.appendChild(msgDiv);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-        
-        // تابع صحبت کردن با Web Speech API
-        function speak(text) {
-            console.log('Speaking:', text);
-            addChatMessage(text, false);
-            document.getElementById('statusBox').innerText = text;
-            
-            const avatar = document.getElementById('assistantAvatar');
-            avatar.classList.add('speaking');
-            
-            // استفاده از speechSynthesis
-            const synth = window.speechSynthesis;
-            
-            if (!synth) {
-                console.error('Speech synthesis not supported');
-                avatar.classList.remove('speaking');
-                return;
-            }
-            
-            // توقف گفتار قبلی
-            synth.cancel();
-            
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'fa-IR';
-            utterance.rate = 0.9;
-            utterance.pitch = 1;
-            utterance.volume = 1;
-            
-            // انتخاب صدای فارسی
-            const voices = synth.getVoices();
-            console.log('Available voices:', voices.length);
-            
-            // پیدا کردن صدای فارسی
-            const faVoice = voices.find(v => 
-                v.lang.includes('fa') || 
-                v.lang.includes('fa-IR') || 
-                v.name.includes('Persian') ||
-                v.name.includes('Farsi')
-            );
-            
-            if (faVoice) {
-                utterance.voice = faVoice;
-                console.log('Using voice:', faVoice.name);
-            } else {
-                console.log('No Persian voice found, using default');
-            }
-            
-            utterance.onstart = () => {
-                console.log('Speech started');
-            };
-            
-            utterance.onend = () => {
-                console.log('Speech ended');
-                avatar.classList.remove('speaking');
-                document.getElementById('statusBox').innerText = 'آماده دستور جدید';
-            };
-            
-            utterance.onerror = (e) => {
-                console.error('Speech error:', e);
-                avatar.classList.remove('speaking');
-            };
-            
-            // تلاش برای صحبت کردن
-            setTimeout(() => {
-                synth.speak(utterance);
-            }, 100);
-        }
-        
-        // تنظیم تشخیص صدا
-        function setupRecognition() {
-            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-            
-            if (!SpeechRec) {
-                console.error('Speech recognition not supported');
-                showToast('مرورگر پشتیبانی نمی‌کند', 'error');
-                return;
-            }
-            
-            recognition = new SpeechRec();
-            recognition.lang = 'fa-IR';
-            recognition.continuous = false;
-            recognition.interimResults = true;
-            recognition.maxAlternatives = 3;
-            
-            recognition.onstart = () => {
-                console.log('Recognition started');
-                isListening = true;
-                document.getElementById('micBtn').classList.add('listening');
-                document.getElementById('assistantAvatar').classList.add('listening');
-                document.getElementById('statusBox').innerText = '👂 گوش می‌دهم...';
-            };
-            
-            recognition.onresult = (event) => {
-                let finalTranscript = '';
-                let interimTranscript = '';
-                
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const transcript = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        finalTranscript += transcript;
-                    } else {
-                        interimTranscript += transcript;
-                    }
-                }
-                
-                if (interimTranscript) {
-                    document.getElementById('statusBox').innerText = '🗣️ ' + interimTranscript;
-                }
-                
-                if (finalTranscript) {
-                    console.log('Final:', finalTranscript);
-                    document.getElementById('statusBox').innerText = '✅ شنیده شد: ' + finalTranscript;
-                    processCommand(finalTranscript);
-                }
-            };
-            
-            recognition.onerror = (event) => {
-                console.error('Recognition error:', event.error);
-                isListening = false;
-                document.getElementById('micBtn').classList.remove('listening');
-                document.getElementById('assistantAvatar').classList.remove('listening');
-                
-                let errorMsg = 'خطا در تشخیص صدا';
-                if (event.error === 'not-allowed') errorMsg = 'دسترسی میکروفون را فعال کنید';
-                if (event.error === 'no-speech') errorMsg = 'صدایی شنیده نشد';
-                if (event.error === 'network') errorMsg = 'خطای شبکه';
-                
-                showToast(errorMsg, 'error');
-                document.getElementById('statusBox').innerText = errorMsg;
-            };
-            
-            recognition.onend = () => {
-                console.log('Recognition ended');
-                isListening = false;
-                document.getElementById('micBtn').classList.remove('listening');
-                document.getElementById('assistantAvatar').classList.remove('listening');
-            };
-        }
-        
-        function toggleVoice() {
-            if (!recognition) {
-                setupRecognition();
-            }
-            
-            if (isListening) {
-                recognition.stop();
-                document.getElementById('statusBox').innerText = 'توقف شد';
-            } else {
-                window.speechSynthesis.cancel();
-                try {
-                    recognition.start();
-                } catch(e) {
-                    console.error('Start error:', e);
-                }
-            }
-        }
-        
-        // پردازش دستورات
-        function processCommand(cmd) {
-            cmd = convertNumbers(cmd.toLowerCase());
-            console.log('Processing:', cmd);
-            
-            addChatMessage(cmd, true);
-            
-            // ثبت هزینه
-            if (cmd.includes('ثبت') || cmd.includes('خرید') || cmd.includes('هزینه') || cmd.includes('پرداخت')) {
-                const nums = cmd.match(/\d+/g);
-                
-                if (nums && nums.length > 0) {
-                    let amount = parseInt(nums[nums.length - 1]);
-                    if (cmd.includes('هزار')) amount *= 1000;
-                    if (cmd.includes('میلیون')) amount *= 1000000;
-                    
-                    let desc = cmd.replace(/[0-9۰-۹]/g, '')
-                        .replace(/هزار|میلیون|تومان|ثبت|خرید|هزینه|پرداخت|کردم|دادم/g, '')
-                        .trim() || 'خرید';
-                    
-                    if (addExpense(desc, amount)) {
-                        const response = toPersian(amount.toLocaleString('fa-IR')) + ' تومان بابت ' + desc + ' ثبت شد';
-                        speak(response);
-                    }
-                } else {
-                    speak('مبلغ را بگویید');
-                }
-                return;
-            }
-            
-            // گزارش
-            if (cmd.includes('گزارش') || cmd.includes('وضعیت') || cmd.includes('چقدر')) {
-                if (expenses.length === 0) {
-                    speak('خریدی ثبت نشده');
-                } else {
-                    const total = expenses.reduce((sum, i) => sum + i.amount, 0);
-                    const today = new Date().toLocaleDateString('fa-IR');
-                    const todayExp = expenses.filter(i => i.date === today);
-                    const todayTotal = todayExp.reduce((sum, i) => sum + i.amount, 0);
-                    
-                    let report = 'جمع کل: ' + toPersian(total.toLocaleString('fa-IR')) + ' تومان. ';
-                    report += 'امروز: ' + toPersian(todayTotal.toLocaleString('fa-IR')) + ' تومان';
-                    speak(report);
-                }
-                return;
-            }
-            
-            // آخرین خرید
-            if (cmd.includes('آخرین') || cmd.includes('جدید')) {
-                if (expenses.length > 0) {
-                    const e = expenses[0];
-                    const response = 'آخرین خرید: ' + e.desc + ' ' + toPersian(e.amount.toLocaleString('fa-IR')) + ' تومان';
-                    speak(response);
-                } else {
-                    speak('خریدی ثبت نشده');
-                }
-                return;
-            }
-            
-            // سلام
-            if (cmd.includes('سلام') || cmd.includes('درود')) {
-                speak('سلام! چطور می‌تونم کمکت کنم؟');
-                return;
-            }
-            
-            // پاک کردن
-            if (cmd.includes('پاک') || cmd.includes('حذف')) {
-                if (confirm('همه داده‌ها پاک شود؟')) {
-                    expenses = [];
-                    localStorage.setItem('voiceFinanceDB', JSON.stringify(expenses));
-                    renderUI();
-                    speak('همه چیز پاک شد');
-                }
-                return;
-            }
-            
-            // پاسخ پیش‌فرض
-            speak('متوجه نشدم. می‌تونید بگید: ثبت هزینه، گزارش، یا آخرین خرید');
-        }
-        
-        function addManualExpense() {
-            const desc = document.getElementById('descInput').value.trim();
-            const amount = parseInt(document.getElementById('amountInput').value);
-            const note = document.getElementById('noteInput').value.trim();
-            
-            if (addExpense(desc, amount, note)) {
-                document.getElementById('descInput').value = '';
-                document.getElementById('amountInput').value = '';
-                document.getElementById('noteInput').value = '';
-                speak('ثبت شد');
-                showToast('✅ ثبت شد');
-            } else {
-                showToast('اطلاعات ناقص است', 'error');
-            }
-        }
-        
-        function showToast(msg, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.innerText = msg;
-            toast.className = 'toast';
-            if (type === 'error') toast.classList.add('error');
-            toast.classList.add('show');
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 2000);
-        }
-        
-        // راه‌اندازی
-        renderUI();
-        setupRecognition();
-        
-        // بارگذاری صداها
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.onvoiceschanged = () => {
-                console.log('Voices loaded');
-                window.speechSynthesis.getVoices();
-            };
-            window.speechSynthesis.getVoices();
-        }
-        
-        // تست
-        setTimeout(() => {
-            console.log('App ready');
-            speak('سلام! من آماده هستم');
-        }, 1500);
-    </script>
-</body>
-</html>
+    .assistant-avatar {
+        width: 100px;
+        height: 100px;
+        margin: 20px auto;
+        border-radius: 50%;
+        background: #16213e;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 50px;
+        transition: all 0.3s;
+    }
+    
+    .assistant-avatar.speaking { animation: pulse 0.5s infinite; background: #00b894; }
+    .assistant-avatar.listening { animation: pulse 1s infinite; background: #ff7675; }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+    
+    .balance-card {
+        background: #16213e;
+        padding: 25px;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .balance-amount { font-size: 30px; color: #00b894; margin: 10px 0; }
+    
+    .status-box {
+        background: #0f3460;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 15px;
+        font-size: 14px;
+        min-height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        line-height: 1.6;
+    }
+    
+    .chat-box {
+        background: #16213e;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 20px 0;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .chat-message {
+        padding: 10px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+    
+    .chat-message.user { background: #0f3460; text-align: right; }
+    .chat-message.assistant { background: #1a1a2e; border: 1px solid #00b894; color: #00b894; }
+    
+    .manual-section {
+        background: #16213e;
+        padding: 20px;
+        border-radius: 15px;
+        margin-bottom: 20px;
+    }
+    
+    input, textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #0f3460;
+        border-radius: 8px;
+        background: #1a1a2e;
+        color: white;
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+    
+    .btn-add {
+        width: 100%;
+        background: #00b894;
+        color: white;
+        border: none;
+        padding: 15px;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+    
+    .mic-wrapper {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    
+    .mic-btn {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: none;
+        background: #ff7675;
+        color: white;
+        font-size: 32px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .mic-btn.listening {
+        background: #d63031;
+        box-shadow: 0 0 0 20px rgba(255, 118, 117, 0.3);
+    }
+    
+    .history-list { list-style: none; margin-top: 20px; }
+    
+    .history-item {
+        background: #16213e;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        border-right: 4px solid #ff7675;
+        position: relative;
+    }
+    
+    .item-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+    }
+    
+    .item-title { font-weight: bold; }
+    .item-price { color: #ff7675; }
+    
+    .item-date {
+        color: #888;
+        font-size: 12px;
+        margin-top: 5px;
+        direction: ltr;
+        text-align: left;
+    }
+    
+    .item-actions {
+        display: flex;
+        gap: 5px;
+        margin-top: 10px;
+    }
+    
+    .btn-edit, .btn-delete {
+        padding: 5px 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    
+    .btn-edit { background: #fdcb6e; color: #2d3436; }
+    .btn-delete { background: #d63031; color: white; }
+    
+    .toast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-100px);
+        background: #00b894;
+        color: white;
+        padding: 15px 25px;
+        border-radius: 25px;
+        transition: 0.3s;
+        z-index: 300;
+    }
+    
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #d63031; }
+</style>
