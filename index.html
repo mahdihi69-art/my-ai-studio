@@ -3,115 +3,96 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>استودیو هوش مصنوعی من</title>
+  <title>AI Studio</title>
   <style>
-    /* استایل‌ها همان قبلی هستند برای زیبایی */
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: Tahoma, 'Segoe UI', sans-serif; }
     body { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #ffffff; min-height: 100vh; padding: 20px; }
     .app-container { max-width: 500px; margin: 0 auto; }
     .app-header { text-align: center; padding: 20px 0; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 25px; }
     .app-header h1 { font-size: 24px; margin-bottom: 5px; background: linear-gradient(45deg, #00d4ff, #ff00ea); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .app-header p { color: #888; font-size: 14px; }
     .media-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border-radius: 20px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 20px; }
-    .media-card h2 { font-size: 18px; margin-bottom: 15px; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
+    .media-card h2 { font-size: 18px; margin-bottom: 15px; color: #00d4ff; }
     .input-field { width: 100%; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 12px; border-radius: 10px; font-size: 14px; margin-bottom: 10px; resize: vertical; }
     .input-field:focus { outline: none; border-color: #00d4ff; }
     .action-btn { background: linear-gradient(45deg, #00d4ff, #0066ff); color: white; border: none; padding: 12px; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; transition: transform 0.2s; margin-top: 10px; }
     .action-btn:active { transform: scale(0.96); }
     .action-btn:disabled { background: #555; cursor: not-allowed; }
-    .file-upload-label { display: block; background: rgba(255, 255, 255, 0.1); border: 2px dashed rgba(255, 255, 255, 0.3); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; margin-bottom: 15px; }
-    #fileInput { display: none; }
-    .preview-area { margin-top: 15px; border-radius: 10px; overflow: hidden; display: none; }
-    .preview-area img { width: 100%; border-radius: 10px; }
     .loading { display: none; text-align: center; padding: 20px; color: #00d4ff; }
     .spinner { border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: #00d4ff; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .error-box { background: rgba(255, 0, 0, 0.1); border-right: 3px solid #ff4444; padding: 10px; margin-top: 10px; border-radius: 5px; font-size: 13px; display: none; color: #ffaaaa; }
-    .success-box { background: rgba(0, 255, 136, 0.1); border-right: 3px solid #00ff88; padding: 10px; margin-top: 10px; border-radius: 5px; font-size: 13px; display: none; color: #00ff88; }
+    .result-box { background: rgba(0, 255, 136, 0.1); border-right: 3px solid #00ff88; padding: 10px; margin-top: 10px; border-radius: 5px; font-size: 13px; display: none; color: #00ff88; }
   </style>
 </head>
 <body>
 
   <div class="app-container">
     <header class="app-header">
-      <h1>🤖 استودیو خلاقیت</h1>
-      <p>متصل به هوش مصنوعی Agnes</p>
+      <h1>🤖 AI Studio</h1>
+      <p>Connected to Agnes AI</p>
     </header>
 
     <article class="media-card">
-      <h2>✍️ دستور (Prompt) خود را بنویسید</h2>
-      <textarea id="promptInput" class="input-field" rows="3" placeholder="مثال: A cinematic video of a futuristic city with flying cars, highly detailed"></textarea>
-      <p style="font-size: 12px; color: #aaa; margin-bottom: 10px;">💡 نکته: برای نتیجه بهتر، پرامپت را به انگلیسی بنویسید.</p>
+      <h2>✍️ Enter Your Prompt</h2>
+      <textarea id="promptInput" class="input-field" rows="3" placeholder="Example: A cinematic video of a futuristic city with flying cars"></textarea>
       
-      <button class="action-btn" id="generateBtn" onclick="callAIAPI()">🚀 ارسال به هوش مصنوعی</button>
+      <button class="action-btn" id="generateBtn" onclick="callAIAPI()">🚀 Generate with AI</button>
       
       <div id="loadingArea" class="loading">
         <div class="spinner"></div>
-        <p>در حال ارتباط با سرور Agnes AI...<br><small>لطفاً صبر کنید</small></p>
+        <p>Processing with AI...<br><small>Please wait</small></p>
       </div>
 
       <div id="errorArea" class="error-box"></div>
-      <div id="successArea" class="success-box"></div>
-      
-      <div id="resultArea" class="preview-area" style="margin-top: 20px;">
-        <h3 style="color: #00ff88; margin-bottom: 10px;">✅ پاسخ هوش مصنوعی:</h3>
-        <p id="aiResponseText" style="font-size: 14px; line-height: 1.6;"></p>
-        <!-- اگر پاسخ تصویری باشد، اینجا نمایش داده می‌شود -->
-        <img id="aiResponseImage" src="" alt="AI Generated" style="display: none; margin-top: 10px;">
-      </div>
+      <div id="resultArea" class="result-box"></div>
     </article>
   </div>
 
   <script>
-    // ==========================================
-    // ⚠️ هشدار امنیتی: کلید خود را اینجا بگذارید
-    // هرگز این فایل را اگر حاوی کلید واقعی است، در اینترنت آپلود نکنید.
-    // ==========================================
-    const API_KEY = 'sk-ForYtuXkI5mWz5pcJC74py8v5T99PjhrHLhr2Ptsfj15qUvD'; 
+    const API_KEY = 'YOUR_API_KEY_HERE';
     
-    // آدرس پایه API (بر اساس مستندات Agnes AI که سازگار با OpenAI است)
-    // نکته: اگر آدرس دقیق ویدیو متفاوت است، باید آن را از داکیومنت Agnes جایگزین کنید.
-    const API_URL = 'https://api.agnes-ai.com/v1/chat/completions'; 
+    // Using CORS proxy to bypass browser restrictions
+    const CORS_PROXY = 'https://corsproxy.io/?';
+    const API_URL = 'https://api.agnes-ai.com/v1/chat/completions';
 
     async function callAIAPI() {
       const prompt = document.getElementById('promptInput').value;
       const btn = document.getElementById('generateBtn');
       const loading = document.getElementById('loadingArea');
       const errorArea = document.getElementById('errorArea');
-      const successArea = document.getElementById('successArea');
       const resultArea = document.getElementById('resultArea');
-      const responseText = document.getElementById('aiResponseText');
-      const responseImage = document.getElementById('aiResponseImage');
 
-      // اعتبارسنجی
-      if (API_KEY === 'کلید_API_خود_را_بین_این_دو_کوتیشن_بگذارید' || API_KEY === '') {
-        alert('⚠️ لطفاً ابتدا کلید API خود را در خط ۸۵ کد (داخل متغیر API_KEY) جایگذاری کنید.');
+      if (API_KEY === 'YOUR_API_KEY_HERE' || API_KEY === '') {
+        alert('Please add your API key in the code first!');
         return;
       }
+
       if (prompt.trim() === "") {
-        alert("لطفاً یک دستور (Prompt) بنویسید!");
+        alert('Please enter a prompt!');
         return;
       }
 
-      // شروع درخواست
       btn.disabled = true;
-      btn.innerText = "⏳ در حال پردازش...";
+      btn.innerText = "Processing...";
       loading.style.display = "block";
       errorArea.style.display = "none";
-      successArea.style.display = "none";
       resultArea.style.display = "none";
 
       try {
-        // ارسال درخواست واقعی به سرور
-        const response = await fetch(API_URL, {
+        // Adding CORS proxy to the URL
+        const fullUrl = CORS_PROXY + encodeURIComponent(API_URL);
+        
+        const response = await fetch(fullUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${API_KEY}`
+            'Authorization': 'Bearer ' + API_KEY
           },
           body: JSON.stringify({
-            model: "agnes-2.5-pro-beta", // یا هر مدلی که Agnes پیشنهاد می‌دهد
+            model: "agnes-2.5-pro-beta",
             messages: [
-              { role: "system", content: "You are a creative AI assistant. Describe a vivid scene based on the user's prompt." },
+              { role: "system", content: "You are a helpful AI assistant." },
               { role: "user", content: prompt }
             ],
             max_tokens: 300
@@ -120,46 +101,26 @@
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error?.message || `خطای سرور: ${response.status}`);
+          throw new Error(errorData.error?.message || 'Server error: ' + response.status);
         }
 
         const data = await response.json();
         
-        // نمایش موفقیت
         loading.style.display = "none";
         btn.disabled = false;
-        btn.innerText = "🚀 ارسال به هوش مصنوعی";
+        btn.innerText = "Generate with AI";
         
         resultArea.style.display = "block";
-        successArea.style.display = "block";
-        successArea.innerText = "✅ با موفقیت دریافت شد!";
-
-        // نمایش متن پاسخ
         const aiText = data.choices[0].message.content;
-        responseText.innerText = aiText;
-        responseImage.style.display = "none";
-
-        // خواندن متن با صدای هوش مصنوعی (مرورگر)
-        speakText(aiText);
+        resultArea.innerHTML = '<strong>AI Response:</strong><br>' + aiText;
 
       } catch (error) {
-        // مدیریت خطا
         loading.style.display = "none";
         btn.disabled = false;
-        btn.innerText = "🚀 ارسال به هوش مصنوعی";
+        btn.innerText = "Generate with AI";
         
         errorArea.style.display = "block";
-        errorArea.innerHTML = `❌ <b>خطا در ارتباط:</b><br>${error.message}<br><br><small>اگر خطای CORS یا Network داد، به معنی آن است که مرورگر موبایل اجازه ارسال مستقیم به این سرور را نمی‌دهد (محدودیت امنیتی مرورگرها). در این صورت باید از یک سرور واسط (Backend) استفاده شود.</small>`;
-      }
-    }
-
-    function speakText(text) {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US'; // چون پاسخ هوش مصنوعی احتمالاً انگلیسی است
-        utterance.rate = 0.9;
-        window.speechSynthesis.speak(utterance);
+        errorArea.innerHTML = '<strong>Error:</strong><br>' + error.message;
       }
     }
   </script>
