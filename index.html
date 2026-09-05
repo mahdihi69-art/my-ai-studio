@@ -3,243 +3,330 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>مدیر مالی هوشمند صوتی</title>
+    <title>مدیر مالی صوتی هوشمند</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Tahoma, 'Segoe UI', sans-serif; }
-        body { background: #f4f6f9; color: #333; min-height: 100vh; padding: 20px; padding-bottom: 100px; }
+        body { background: #f8f9fa; color: #2d3436; min-height: 100vh; padding: 20px; padding-bottom: 120px; }
         
-        .header { text-align: center; margin-bottom: 20px; }
+        .header { text-align: center; margin-bottom: 25px; }
         .balance-card { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; padding: 25px; border-radius: 20px; 
-            text-align: center; box-shadow: 0 10px 30px rgba(118, 75, 162, 0.3);
-            margin-bottom: 25px; position: relative; overflow: hidden;
+            background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%); 
+            color: white; padding: 30px 20px; border-radius: 24px; 
+            text-align: center; box-shadow: 0 15px 35px rgba(108, 92, 231, 0.2);
+            margin-bottom: 25px; position: relative;
         }
-        .balance-label { font-size: 14px; opacity: 0.9; margin-bottom: 5px; }
-        .balance-amount { font-size: 32px; font-weight: bold; direction: ltr; }
+        .balance-label { font-size: 14px; opacity: 0.9; margin-bottom: 8px; letter-spacing: 1px; }
+        .balance-amount { font-size: 36px; font-weight: 800; direction: ltr; text-shadow: 0 2px 10px rgba(0,0,0,0.1); }
 
-        .voice-status {
-            background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px;
-            margin-top: 15px; font-size: 13px; display: none; backdrop-filter: blur(5px);
+        /* وضعیت صوتی پویا */
+        .voice-feedback {
+            background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
+            padding: 10px 20px; border-radius: 30px; margin-top: 15px;
+            font-size: 14px; min-height: 40px; display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s ease; opacity: 0; transform: translateY(10px);
         }
+        .voice-feedback.active { opacity: 1; transform: translateY(0); }
 
-        .input-group { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 10px; font-size: 15px; }
-        .btn-add { width: 100%; background: #667eea; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        
-        /* دکمه میکروفون پویا */
-        .voice-btn-container { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 100; }
-        .voice-btn { 
-            background: #ff4757; color: white; border: none; width: 70px; height: 70px;
-            border-radius: 50%; font-size: 28px; box-shadow: 0 5px 25px rgba(255, 71, 87, 0.4);
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: all 0.3s ease;
-        }
-        .voice-btn.listening { 
-            animation: pulse-ring 1.5s infinite; background: #ff6b81; transform: scale(1.1);
-            box-shadow: 0 0 0 15px rgba(255, 71, 87, 0.2);
-        }
-        @keyframes pulse-ring {
-            0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.4); }
-            70% { box-shadow: 0 0 0 20px rgba(255, 71, 87, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
-        }
+        .manual-input { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); margin-bottom: 25px; }
+        .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        input, textarea { width: 100%; padding: 14px; border: 2px solid #eee; border-radius: 14px; font-size: 15px; transition: 0.3s; background: #fafafa; }
+        input:focus, textarea:focus { outline: none; border-color: #6c5ce7; background: white; }
+        textarea { resize: none; height: 60px; font-size: 13px; }
+        .btn-add { width: 100%; background: #6c5ce7; color: white; border: none; padding: 16px; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-add:active { transform: scale(0.98); }
 
+        /* دکمه میکروفون حرفه‌ای */
+        .mic-wrapper { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 100; }
+        .mic-btn { 
+            width: 80px; height: 80px; border-radius: 50%; border: none;
+            background: linear-gradient(135deg, #ff7675, #d63031);
+            color: white; font-size: 32px; cursor: pointer;
+            box-shadow: 0 10px 30px rgba(214, 48, 49, 0.3);
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .mic-btn.listening { 
+            transform: translateX(-50%) scale(1.15); 
+            box-shadow: 0 0 0 20px rgba(255, 118, 117, 0.2), 0 15px 40px rgba(214, 48, 49, 0.4);
+            animation: breathe 2s infinite ease-in-out;
+        }
+        @keyframes breathe { 0%, 100% { box-shadow: 0 0 0 15px rgba(255, 118, 117, 0.2); } 50% { box-shadow: 0 0 0 25px rgba(255, 118, 117, 0.1); } }
+
+        .history-section h3 { font-size: 18px; margin-bottom: 15px; color: #636e72; display: flex; align-items: center; gap: 8px; }
         .history-list { list-style: none; }
-        .history-item { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
-        .item-info h4 { font-size: 15px; margin-bottom: 3px; }
-        .item-info span { font-size: 12px; color: #888; }
-        .item-amount { font-weight: bold; color: #e74c3c; direction: ltr; }
-        
-        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 25px; border-radius: 30px; font-size: 14px; opacity: 0; transition: 0.3s; pointer-events: none; z-index: 200; white-space: nowrap; }
-        .toast.show { opacity: 1; top: 30px; }
+        .history-item { 
+            background: white; padding: 18px; border-radius: 16px; margin-bottom: 12px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03); border-right: 4px solid #ff7675;
+            transition: transform 0.2s;
+        }
+        .history-item:active { transform: scale(0.98); }
+        .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .item-title { font-weight: bold; font-size: 16px; }
+        .item-price { font-weight: 800; color: #d63031; direction: ltr; font-size: 15px; }
+        .item-note { font-size: 12px; color: #b2bec3; margin-top: 4px; line-height: 1.5; }
+        .item-date { font-size: 11px; color: #dfe6e9; margin-top: 6px; }
+
+        .toast { 
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+            background: #2d3436; color: white; padding: 14px 28px; border-radius: 50px;
+            font-size: 14px; font-weight: bold; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 300; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>💰 مدیر مالی هوشمند</h1>
-        <p style="color:#888; font-size:13px;">روی میکروفون بزنید و بگویید: "گزارش"، "آخرین خرید" یا "ثبت ناهار ۰ هزار"</p>
+        <h1 style="font-size: 22px; color: #2d3436;"> مدیر مالی صوتی</h1>
     </div>
 
     <div class="balance-card">
         <div class="balance-label">مانده حساب شما</div>
-        <div class="balance-amount" id="totalBalance">0 تومان</div>
-        <div class="voice-status" id="voiceStatus">در حال گوش دادن...</div>
+        <div class="balance-amount" id="totalBalance"> تومان</div>
+        <div class="voice-feedback" id="voiceFeedback">برای شروع روی میکروفون بزنید...</div>
     </div>
 
-    <div class="input-group">
-        <input type="text" id="descInput" placeholder="توضیح دستی (اختیاری)">
-        <input type="number" id="amountInput" placeholder="مبلغ دستی (اختیاری)" inputmode="numeric">
-        <button class="btn-add" onclick="addExpense()">➕ ثبت دستی</button>
+    <div class="manual-input">
+        <div class="input-row">
+            <input type="text" id="descInput" placeholder="عنوان خرید (مثلا: ناهار)">
+            <input type="number" id="amountInput" placeholder="مبلغ" inputmode="numeric" style="width: 120px;">
+        </div>
+        <textarea id="noteInput" placeholder="توضیحات تکمیلی (اختیاری): مثلا با همکاران، کیفیت خوب بود..."></textarea>
+        <button class="btn-add" onclick="addManualExpense()">➕ ثبت دستی</button>
     </div>
 
-    <ul class="history-list" id="historyList"></ul>
+    <div class="history-section">
+        <h3>📋 تاریخچه خریدها</h3>
+        <ul class="history-list" id="historyList"></ul>
+    </div>
 
-    <div class="voice-btn-container">
-        <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">🎤</button>
+    <div class="mic-wrapper">
+        <button class="mic-btn" id="micBtn" onclick="toggleVoice()">🎤</button>
     </div>
     
     <div class="toast" id="toast"></div>
 
     <script>
         // --- مدیریت داده‌ها ---
-        let expenses = JSON.parse(localStorage.getItem('smartFinanceData')) || [];
+        let expenses = JSON.parse(localStorage.getItem('voiceFinanceDB')) || [];
+        let voiceState = 'IDLE'; // IDLE, ASKING_DESC, ASKING_AMOUNT, ASKING_NOTE
         
         function saveData() {
-            localStorage.setItem('smartFinanceData', JSON.stringify(expenses));
+            localStorage.setItem('voiceFinanceDB', JSON.stringify(expenses));
             renderUI();
         }
 
-        function addExpense(desc = null, amount = null) {
-            const d = desc || document.getElementById('descInput').value.trim();
-            const a = amount ? parseInt(amount) : parseInt(document.getElementById('amountInput').value);
-
-            if (!d || isNaN(a) || a <= 0) return false;
-
-            expenses.unshift({ desc: d, amount: a, date: new Date().toLocaleDateString('fa-IR') });
+        function addExpense(desc, amount, note = '') {
+            if (!desc || isNaN(amount) || amount <= 0) return false;
+            expenses.unshift({ 
+                desc, amount, note, 
+                date: new Date().toLocaleDateString('fa-IR'),
+                time: new Date().toLocaleTimeString('fa-IR', {hour:'2-digit', minute:'2-digit'})
+            });
             saveData();
-            
-            if(!desc) { 
-                document.getElementById('descInput').value = '';
-                document.getElementById('amountInput').value = '';
-                showToast("✅ هزینه ثبت شد");
-            }
             return true;
         }
 
         function renderUI() {
-            const total = expenses.reduce((sum, item) => sum + item.amount, 0);
+            const total = expenses.reduce((sum, i) => sum + i.amount, 0);
             document.getElementById('totalBalance').innerText = total.toLocaleString('fa-IR') + ' تومان';
             
-            const list = document.getElementById('historyList');
-            list.innerHTML = expenses.slice(0, 10).map(item => `
+            document.getElementById('historyList').innerHTML = expenses.map(item => `
                 <li class="history-item">
-                    <div class="item-info"><h4>${item.desc}</h4><span>${item.date}</span></div>
-                    <div class="item-amount">-${item.amount.toLocaleString('fa-IR')}</div>
+                    <div class="item-header">
+                        <span class="item-title">${item.desc}</span>
+                        <span class="item-price">${item.amount.toLocaleString('fa-IR')}</span>
+                    </div>
+                    ${item.note ? `<div class="item-note">📝 ${item.note}</div>` : ''}
+                    <div class="item-date">${item.date} - ${item.time}</div>
                 </li>
             `).join('');
         }
 
-        // --- هسته دستیار صوتی پویا ---
-        const voiceBtn = document.getElementById('voiceBtn');
-        const voiceStatus = document.getElementById('voiceStatus');
-        let recognition;
+        // --- هسته دستیار صوتی پیشرفته ---
+        const micBtn = document.getElementById('micBtn');
+        const feedback = document.getElementById('voiceFeedback');
+        let recognition, isListening = false;
 
-        // راه‌اندازی موتور صوتی سازگار
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRec) {
             recognition = new SpeechRec();
             recognition.lang = 'fa-IR';
             recognition.continuous = false;
-            recognition.interimResults = true; // نمایش زنده کلمات
-            
+            recognition.interimResults = true;
+
             recognition.onstart = () => {
-                voiceBtn.classList.add('listening');
-                voiceStatus.style.display = 'block';
-                voiceStatus.innerText = "👂 در حال گوش دادن...";
+                isListening = true;
+                micBtn.classList.add('listening');
+                updateFeedback("👂 گوش می‌دهم...", true);
             };
 
             recognition.onresult = (event) => {
-                let interimTranscript = '';
+                let transcript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    interimTranscript += event.results[i][0].transcript;
+                    transcript += event.results[i][0].transcript;
                 }
-                voiceStatus.innerText = `🗣️ "${interimTranscript}"`;
+                updateFeedback(`🗣️ "${transcript}"`, true);
                 
                 if (event.results[0].isFinal) {
-                    processCommand(interimTranscript.toLowerCase());
+                    processVoice(transcript.trim().toLowerCase());
                 }
             };
 
             recognition.onerror = (e) => {
-                console.error(e);
                 stopListening();
-                if(e.error === 'not-allowed') showToast("⚠️ لطفاً دسترسی میکروفون را فعال کنید");
+                if(e.error === 'not-allowed') showToast("⚠️ دسترسی میکروفون را فعال کنید");
             };
-
             recognition.onend = () => stopListening();
-        } else {
-            voiceBtn.style.opacity = '0.5';
-            showToast("مرورگر شما از صوت پشتیبانی نمی‌کند");
         }
 
         function toggleVoice() {
-            if (!recognition) return;
-            try {
-                if (voiceBtn.classList.contains('listening')) recognition.stop();
-                else recognition.start();
-            } catch(e) { recognition.stop(); }
+            if (!recognition) { showToast("مرورگر شما پشتیبانی نمی‌کند"); return; }
+            isListening ? recognition.stop() : recognition.start();
         }
 
         function stopListening() {
-            voiceBtn.classList.remove('listening');
-            setTimeout(() => { voiceStatus.style.display = 'none'; }, 2000);
+            isListening = false;
+            micBtn.classList.remove('listening');
+            setTimeout(() => updateFeedback("", false), 3000);
         }
 
-        // مغز متفکر پردازش دستورات
-        function processCommand(cmd) {
+        function updateFeedback(text, show) {
+            feedback.innerText = text;
+            show ? feedback.classList.add('active') : feedback.classList.remove('active');
+        }
+
+        // مغز متفکر چندمرحله‌ای
+        function processVoice(cmd) {
             showToast(`شنیدم: "${cmd}"`);
             
-            // 1. گزارش‌گیری
-            if (cmd.includes('گزارش') || cmd.includes('وضعیت') || cmd.includes('چقدر') || cmd.includes('حساب')) {
-                giveReport();
-            } 
-            // 2. آخرین خرید
-            else if (cmd.includes('آخرین') || cmd.includes('جدیدترین') || cmd.includes('قبلی')) {
-                if (expenses.length > 0) {
-                    speak(`آخرین خرید شما ${expenses[0].desc} به مبلغ ${expenses[0].amount.toLocaleString('fa-IR')} تومان بوده است.`);
-                } else speak("هنوز هیچ خریدی ثبت نشده.");
+            // حالت‌های پرسشگری
+            if (voiceState === 'ASKING_DESC') {
+                window.tempDesc = cmd;
+                speak("چقدر پرداخت کردی؟");
+                updateFeedback("💬 مبلغ را بگویید...", true);
+                voiceState = 'ASKING_AMOUNT';
+                setTimeout(() => recognition.start(), 1500); // شروع خودکار گوش دادن
+                return;
             }
-            // 3. ثبت هزینه هوشمند
-            else if (cmd.includes('ثبت') || cmd.includes('خرید') || cmd.includes('هزینه') || cmd.includes('پرداخت')) {
-                const numbers = cmd.match(/\d+/g);
-                if (numbers && numbers.length > 0) {
-                    // تبدیل اعداد فارسی به انگلیسی اگر لازم بود (در اینجا ساده‌سازی شده)
-                    let amount = parseInt(numbers[numbers.length - 1]);
-                    // تشخیص هزار/میلیون
-                    if (cmd.includes('هزار')) amount *= 1000;
-                    if (cmd.includes('میلیون')) amount *= 1000000;
-
-                    // استخراج نام کالا (حذف اعداد و کلمات کلیدی)
-                    let desc = cmd.replace(/[0-9]/g, '').replace(/هزار|میلیون|تومان|ریال|ثبت|کردم|خرید|هزینه|پرداخت|یک|دو|سه/g, '').trim();
-                    if (desc.length < 2) desc = "خرید صوتی";
+            
+            if (voiceState === 'ASKING_AMOUNT') {
+                const nums = cmd.match(/\d+/g);
+                if (nums) {
+                    let amt = parseInt(nums[nums.length-1]);
+                    if (cmd.includes('هزار')) amt *= 1000;
+                    if (cmd.includes('میلیون')) amt *= 1000000;
                     
-                    if(addExpense(desc, amount)) {
-                        speak(`${amount.toLocaleString('fa-IR')} تومان بابت ${desc} با موفقیت ثبت شد.`);
-                    }
+                    addExpense(window.tempDesc, amt);
+                    speak(`${amt.toLocaleString('fa-IR')} تومان بابت ${window.tempDesc} ثبت شد. توضیح خاصی داری؟`);
+                    updateFeedback("✅ ثبت شد. توضیح؟", true);
+                    voiceState = 'ASKING_NOTE';
+                    setTimeout(() => recognition.start(), 2000);
                 } else {
-                    speak("مبلغ را متوجه نشدم. لطفاً بگویید: ثبت ناهار پنجاه هزار تومان");
+                    speak("مبلغ را نفهمیدم. دوباره بگو.");
+                    voiceState = 'ASKING_AMOUNT';
+                    setTimeout(() => recognition.start(), 1500);
+                }
+                return;
+            }
+
+            if (voiceState === 'ASKING_NOTE') {
+                if (cmd.includes('نه') || cmd.includes('ندارم') || cmd.includes('خالی')) {
+                    speak("بسیار عالی. خرید قبلی بدون توضیح ثبت شد.");
+                } else {
+                    expenses[0].note = cmd;
+                    saveData();
+                    speak(`توضیح "${cmd}" هم ذخیره شد.`);
+                }
+                voiceState = 'IDLE';
+                updateFeedback("✅ آماده دستور بعدی", true);
+                return;
+            }
+
+            // دستورات اصلی
+            if (cmd.includes('گزارش') || cmd.includes('وضعیت') || cmd.includes('چقدر')) {
+                giveDetailedReport();
+            } 
+            else if (cmd.includes('آخرین') || cmd.includes('جدید')) {
+                if (expenses.length > 0) {
+                    const e = expenses[0];
+                    let msg = `آخرین خرید: ${e.desc}، مبلغ ${e.amount.toLocaleString('fa-IR')} تومان`;
+                    if(e.note) msg += `. توضیح: ${e.note}`;
+                    speak(msg);
+                } else speak("هنوز خریدی ثبت نشده.");
+            }
+            else if (cmd.includes('ثبت') || cmd.includes('خرید') || cmd.includes('هزینه')) {
+                // تلاش برای استخراج همه چیز در یک جمله
+                const nums = cmd.match(/\d+/g);
+                if (nums && nums.length > 0) {
+                    let amt = parseInt(nums[nums.length-1]);
+                    if (cmd.includes('هزار')) amt *= 1000;
+                    let desc = cmd.replace(/[0-9]/g, '').replace(/هزار|میلیون|تومان|ریال|ثبت|کردم|خرید|هزینه/g, '').trim();
+                    if(desc.length < 2) desc = "خرید صوتی";
+                    
+                    addExpense(desc, amt);
+                    speak(`${amt.toLocaleString('fa-IR')} تومان بابت ${desc} ثبت شد.`);
+                } else {
+                    // شروع فرآیند پرسشگری
+                    speak("چی خریدی؟");
+                    updateFeedback("💬 چی خریدی؟", true);
+                    voiceState = 'ASKING_DESC';
+                    setTimeout(() => recognition.start(), 1500);
                 }
             }
-            // 4. پاک کردن
-            else if (cmd.includes('پاک') || cmd.includes('حذف') || cmd.includes('ریست')) {
-                if(confirm("آیا مطمئنید تمام داده‌ها پاک شوند؟")) {
-                    expenses = []; saveData(); speak("تمام داده‌ها پاک شدند.");
+            else if (cmd.includes('پاک') || cmd.includes('حذف همه')) {
+                if(confirm("همه داده‌ها پاک شوند؟")) {
+                    expenses = []; saveData(); speak("همه چیز پاک شد.");
                 }
             }
             else {
-                speak("دستور را نفهمیدم. بگویید: گزارش، آخرین خرید، یا ثبت [نام] [مبلغ]");
+                speak("نفهمیدم. بگو: گزارش، آخرین خرید، یا ثبت هزینه");
             }
         }
 
-        function giveReport() {
-            const total = expenses.reduce((sum, i) => sum + i.amount, 0);
-            const todayStr = new Date().toLocaleDateString('fa-IR');
-            const todayTotal = expenses.filter(i => i.date === todayStr).reduce((sum, i) => sum + i.amount, 0);
+        function giveDetailedReport() {
+            if (expenses.length === 0) { speak("هیچ خریدی ندارید."); return; }
             
-            let msg = `مانده کل شما ${total.toLocaleString('fa-IR')} تومان است. `;
-            msg += todayTotal > 0 ? `امروز ${todayTotal.toLocaleString('fa-IR')} تومان خرج کرده‌اید.` : "امروز خرجی نداشته‌اید.";
-            speak(msg);
+            const todayStr = new Date().toLocaleDateString('fa-IR');
+            const todayExpenses = expenses.filter(i => i.date === todayStr);
+            
+            if (todayExpenses.length === 0) {
+                speak("امروز هنوز خرجی نداشته‌اید.");
+                return;
+            }
+
+            const totalToday = todayExpenses.reduce((s,i) => s+i.amount, 0);
+            let report = `امروز ${todayExpenses.length} خرید داشتید. جمع کل: ${totalToday.toLocaleString('fa-IR')} تومان. `;
+            report += "ریز خریدها: ";
+            
+            todayExpenses.forEach((e, idx) => {
+                report += `${idx+1}. ${e.desc} ${e.amount.toLocaleString('fa-IR')} تومان`;
+                if(e.note) report += `، (${e.note})`;
+                report += ". ";
+            });
+            
+            speak(report);
         }
 
         function speak(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const u = new SpeechSynthesisUtterance(text);
-                u.lang = 'fa-IR'; u.rate = 0.9;
-                window.speechSynthesis.speak(u);
-            }
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'fa-IR'; u.rate = 0.95; u.pitch = 1;
+            window.speechSynthesis.speak(u);
+        }
+
+        function addManualExpense() {
+            const d = document.getElementById('descInput').value.trim();
+            const a = parseInt(document.getElementById('amountInput').value);
+            const n = document.getElementById('noteInput').value.trim();
+            if(addExpense(d, a, n)) {
+                showToast("✅ ثبت شد");
+                document.getElementById('descInput').value = '';
+                document.getElementById('amountInput').value = '';
+                document.getElementById('noteInput').value = '';
+                speak("خرید دستی با موفقیت ثبت شد.");
+            } else showToast("⚠️ اطلاعات ناقص است");
         }
 
         function showToast(msg) {
