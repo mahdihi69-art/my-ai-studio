@@ -3,39 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>مدیر مالی صوتی هوشمند</title>
+    <title>مدیر مالی صوتی پویا</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Tahoma, 'Segoe UI', sans-serif; }
-        body { background: #f8f9fa; color: #2d3436; min-height: 100vh; padding: 20px; padding-bottom: 120px; }
+        body { background: #f0f2f5; color: #1a1a2e; min-height: 100vh; padding: 20px; padding-bottom: 140px; }
         
-        .header { text-align: center; margin-bottom: 25px; }
+        .header { text-align: center; margin-bottom: 20px; }
         .balance-card { 
             background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%); 
             color: white; padding: 30px 20px; border-radius: 24px; 
-            text-align: center; box-shadow: 0 15px 35px rgba(108, 92, 231, 0.2);
-            margin-bottom: 25px; position: relative;
+            text-align: center; box-shadow: 0 15px 35px rgba(108, 92, 231, 0.25);
+            margin-bottom: 25px; position: relative; overflow: hidden;
         }
-        .balance-label { font-size: 14px; opacity: 0.9; margin-bottom: 8px; letter-spacing: 1px; }
-        .balance-amount { font-size: 36px; font-weight: 800; direction: ltr; text-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .balance-label { font-size: 13px; opacity: 0.9; margin-bottom: 8px; letter-spacing: 1px; }
+        .balance-amount { font-size: 34px; font-weight: 800; direction: ltr; }
 
-        /* وضعیت صوتی پویا */
-        .voice-feedback {
-            background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
-            padding: 10px 20px; border-radius: 30px; margin-top: 15px;
-            font-size: 14px; min-height: 40px; display: flex; align-items: center; justify-content: center;
+        /* نوار وضعیت صوتی زنده */
+        .voice-status {
+            background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);
+            padding: 12px 20px; border-radius: 30px; margin-top: 15px;
+            font-size: 14px; min-height: 45px; display: flex; align-items: center; justify-content: center;
             transition: all 0.3s ease; opacity: 0; transform: translateY(10px);
         }
-        .voice-feedback.active { opacity: 1; transform: translateY(0); }
+        .voice-status.active { opacity: 1; transform: translateY(0); }
 
-        .manual-input { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); margin-bottom: 25px; }
-        .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
-        input, textarea { width: 100%; padding: 14px; border: 2px solid #eee; border-radius: 14px; font-size: 15px; transition: 0.3s; background: #fafafa; }
+        .manual-section { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); margin-bottom: 25px; }
+        input, textarea { width: 100%; padding: 14px; border: 2px solid #eee; border-radius: 14px; font-size: 15px; margin-bottom: 10px; background: #fafafa; transition: 0.3s; }
         input:focus, textarea:focus { outline: none; border-color: #6c5ce7; background: white; }
         textarea { resize: none; height: 60px; font-size: 13px; }
-        .btn-add { width: 100%; background: #6c5ce7; color: white; border: none; padding: 16px; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-add:active { transform: scale(0.98); }
+        .btn-add { width: 100%; background: #6c5ce7; color: white; border: none; padding: 16px; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; }
 
-        /* دکمه میکروفون حرفه‌ای */
+        /* دکمه میکروفون تعاملی */
         .mic-wrapper { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 100; }
         .mic-btn { 
             width: 80px; height: 80px; border-radius: 50%; border: none;
@@ -46,23 +44,20 @@
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .mic-btn.listening { 
-            transform: translateX(-50%) scale(1.15); 
+            transform: translateX(-50%) scale(1.1); 
             box-shadow: 0 0 0 20px rgba(255, 118, 117, 0.2), 0 15px 40px rgba(214, 48, 49, 0.4);
             animation: breathe 2s infinite ease-in-out;
         }
         @keyframes breathe { 0%, 100% { box-shadow: 0 0 0 15px rgba(255, 118, 117, 0.2); } 50% { box-shadow: 0 0 0 25px rgba(255, 118, 117, 0.1); } }
 
-        .history-section h3 { font-size: 18px; margin-bottom: 15px; color: #636e72; display: flex; align-items: center; gap: 8px; }
         .history-list { list-style: none; }
         .history-item { 
             background: white; padding: 18px; border-radius: 16px; margin-bottom: 12px; 
             box-shadow: 0 2px 10px rgba(0,0,0,0.03); border-right: 4px solid #ff7675;
-            transition: transform 0.2s;
         }
-        .history-item:active { transform: scale(0.98); }
         .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
         .item-title { font-weight: bold; font-size: 16px; }
-        .item-price { font-weight: 800; color: #d63031; direction: ltr; font-size: 15px; }
+        .item-price { font-weight: 800; color: #d63031; direction: ltr; }
         .item-note { font-size: 12px; color: #b2bec3; margin-top: 4px; line-height: 1.5; }
         .item-date { font-size: 11px; color: #dfe6e9; margin-top: 6px; }
 
@@ -77,29 +72,22 @@
 </head>
 <body>
 
-    <div class="header">
-        <h1 style="font-size: 22px; color: #2d3436;"> مدیر مالی صوتی</h1>
-    </div>
+    <div class="header"><h1 style="font-size: 22px;">💰 مدیر مالی صوتی</h1></div>
 
     <div class="balance-card">
         <div class="balance-label">مانده حساب شما</div>
         <div class="balance-amount" id="totalBalance"> تومان</div>
-        <div class="voice-feedback" id="voiceFeedback">برای شروع روی میکروفون بزنید...</div>
+        <div class="voice-status" id="voiceStatus">روی میکروفون بزنید...</div>
     </div>
 
-    <div class="manual-input">
-        <div class="input-row">
-            <input type="text" id="descInput" placeholder="عنوان خرید (مثلا: ناهار)">
-            <input type="number" id="amountInput" placeholder="مبلغ" inputmode="numeric" style="width: 120px;">
-        </div>
-        <textarea id="noteInput" placeholder="توضیحات تکمیلی (اختیاری): مثلا با همکاران، کیفیت خوب بود..."></textarea>
+    <div class="manual-section">
+        <input type="text" id="descInput" placeholder="عنوان خرید">
+        <input type="number" id="amountInput" placeholder="مبلغ" inputmode="numeric">
+        <textarea id="noteInput" placeholder="توضیحات تکمیلی (اختیاری)"></textarea>
         <button class="btn-add" onclick="addManualExpense()">➕ ثبت دستی</button>
     </div>
 
-    <div class="history-section">
-        <h3>📋 تاریخچه خریدها</h3>
-        <ul class="history-list" id="historyList"></ul>
-    </div>
+    <ul class="history-list" id="historyList"></ul>
 
     <div class="mic-wrapper">
         <button class="mic-btn" id="micBtn" onclick="toggleVoice()">🎤</button>
@@ -108,10 +96,11 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        // --- مدیریت داده‌ها ---
+        // --- مدیریت داده‌ها و حالت مکالمه ---
         let expenses = JSON.parse(localStorage.getItem('voiceFinanceDB')) || [];
-        let voiceState = 'IDLE'; // IDLE, ASKING_DESC, ASKING_AMOUNT, ASKING_NOTE
-        
+        let convState = 'IDLE'; // IDLE, ASK_DESC, ASK_AMT, ASK_NOTE
+        let tempData = {};
+
         function saveData() {
             localStorage.setItem('voiceFinanceDB', JSON.stringify(expenses));
             renderUI();
@@ -119,11 +108,7 @@
 
         function addExpense(desc, amount, note = '') {
             if (!desc || isNaN(amount) || amount <= 0) return false;
-            expenses.unshift({ 
-                desc, amount, note, 
-                date: new Date().toLocaleDateString('fa-IR'),
-                time: new Date().toLocaleTimeString('fa-IR', {hour:'2-digit', minute:'2-digit'})
-            });
+            expenses.unshift({ desc, amount, note, date: new Date().toLocaleDateString('fa-IR'), time: new Date().toLocaleTimeString('fa-IR', {hour:'2-digit', minute:'2-digit'}) });
             saveData();
             return true;
         }
@@ -131,7 +116,6 @@
         function renderUI() {
             const total = expenses.reduce((sum, i) => sum + i.amount, 0);
             document.getElementById('totalBalance').innerText = total.toLocaleString('fa-IR') + ' تومان';
-            
             document.getElementById('historyList').innerHTML = expenses.map(item => `
                 <li class="history-item">
                     <div class="item-header">
@@ -144,9 +128,9 @@
             `).join('');
         }
 
-        // --- هسته دستیار صوتی پیشرفته ---
+        // --- هسته صوتی با حلقه بازخورد ---
         const micBtn = document.getElementById('micBtn');
-        const feedback = document.getElementById('voiceFeedback');
+        const statusEl = document.getElementById('voiceStatus');
         let recognition, isListening = false;
 
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -159,7 +143,7 @@
             recognition.onstart = () => {
                 isListening = true;
                 micBtn.classList.add('listening');
-                updateFeedback("👂 گوش می‌دهم...", true);
+                updateStatus("👂 گوش می‌دهم...", true);
             };
 
             recognition.onresult = (event) => {
@@ -167,10 +151,10 @@
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     transcript += event.results[i][0].transcript;
                 }
-                updateFeedback(`🗣️ "${transcript}"`, true);
+                updateStatus(`🗣️ "${transcript}"`, true);
                 
                 if (event.results[0].isFinal) {
-                    processVoice(transcript.trim().toLowerCase());
+                    processCommand(transcript.trim().toLowerCase());
                 }
             };
 
@@ -178,141 +162,150 @@
                 stopListening();
                 if(e.error === 'not-allowed') showToast("⚠️ دسترسی میکروفون را فعال کنید");
             };
-            recognition.onend = () => stopListening();
+
+            // نکته کلیدی: وقتی تمام شد، اگر در حالت مکالمه بودیم دوباره شروع کن
+            recognition.onend = () => {
+                isListening = false;
+                micBtn.classList.remove('listening');
+                
+                if (convState !== 'IDLE' && convState !== 'FINISHED') {
+                    setTimeout(() => {
+                        try { recognition.start(); } catch(e){}
+                    }, 800); // مکث کوتاه برای شنیدن پاسخ کاربر
+                } else {
+                    setTimeout(() => updateStatus("", false), 3000);
+                }
+            };
         }
 
         function toggleVoice() {
-            if (!recognition) { showToast("مرورگر شما پشتیبانی نمی‌کند"); return; }
-            isListening ? recognition.stop() : recognition.start();
+            if (!recognition) { showToast("مرورگر پشتیبانی نمی‌کند"); return; }
+            if (isListening) {
+                recognition.stop();
+                convState = 'IDLE';
+            } else {
+                convState = 'IDLE';
+                recognition.start();
+            }
         }
 
         function stopListening() {
             isListening = false;
             micBtn.classList.remove('listening');
-            setTimeout(() => updateFeedback("", false), 3000);
         }
 
-        function updateFeedback(text, show) {
-            feedback.innerText = text;
-            show ? feedback.classList.add('active') : feedback.classList.remove('active');
+        function updateStatus(text, show) {
+            statusEl.innerText = text;
+            show ? statusEl.classList.add('active') : statusEl.classList.remove('active');
         }
 
-        // مغز متفکر چندمرحله‌ای
-        function processVoice(cmd) {
+        // مغز متفکر چندمرحله‌ای با حلقه باز
+        function processCommand(cmd) {
             showToast(`شنیدم: "${cmd}"`);
             
-            // حالت‌های پرسشگری
-            if (voiceState === 'ASKING_DESC') {
-                window.tempDesc = cmd;
+            // مرحله ۱: پرسیدن نام کالا
+            if (convState === 'ASK_DESC') {
+                tempData.desc = cmd;
                 speak("چقدر پرداخت کردی؟");
-                updateFeedback("💬 مبلغ را بگویید...", true);
-                voiceState = 'ASKING_AMOUNT';
-                setTimeout(() => recognition.start(), 1500); // شروع خودکار گوش دادن
-                return;
+                updateStatus("💬 مبلغ را بگویید...", true);
+                convState = 'ASK_AMT';
+                return; // onend خودش دوباره گوش می‌دهد
             }
             
-            if (voiceState === 'ASKING_AMOUNT') {
+            // مرحله ۲: پرسیدن مبلغ
+            if (convState === 'ASK_AMT') {
                 const nums = cmd.match(/\d+/g);
                 if (nums) {
                     let amt = parseInt(nums[nums.length-1]);
                     if (cmd.includes('هزار')) amt *= 1000;
                     if (cmd.includes('میلیون')) amt *= 1000000;
                     
-                    addExpense(window.tempDesc, amt);
-                    speak(`${amt.toLocaleString('fa-IR')} تومان بابت ${window.tempDesc} ثبت شد. توضیح خاصی داری؟`);
-                    updateFeedback("✅ ثبت شد. توضیح؟", true);
-                    voiceState = 'ASKING_NOTE';
-                    setTimeout(() => recognition.start(), 2000);
+                    tempData.amount = amt;
+                    addExpense(tempData.desc, amt);
+                    speak(`${amt.toLocaleString('fa-IR')} تومان ثبت شد. توضیح خاصی داری؟ بگو نه اگر نداری.`);
+                    updateStatus("✅ ثبت شد. توضیح؟", true);
+                    convState = 'ASK_NOTE';
                 } else {
-                    speak("مبلغ را نفهمیدم. دوباره بگو.");
-                    voiceState = 'ASKING_AMOUNT';
-                    setTimeout(() => recognition.start(), 1500);
+                    speak("مبلغ را نفهمیدم. لطفاً فقط عدد بگو.");
+                    convState = 'ASK_AMT'; // تکرار همین مرحله
                 }
                 return;
             }
 
-            if (voiceState === 'ASKING_NOTE') {
-                if (cmd.includes('نه') || cmd.includes('ندارم') || cmd.includes('خالی')) {
-                    speak("بسیار عالی. خرید قبلی بدون توضیح ثبت شد.");
+            // مرحله ۳: پرسیدن توضیحات
+            if (convState === 'ASK_NOTE') {
+                if (cmd.includes('نه') || cmd.includes('ندارم') || cmd.includes('خالی') || cmd.length < 3) {
+                    speak("بسیار عالی. آماده دستور بعدی هستم.");
                 } else {
                     expenses[0].note = cmd;
                     saveData();
-                    speak(`توضیح "${cmd}" هم ذخیره شد.`);
+                    speak(`توضیح ذخیره شد. چه کار دیگری؟`);
                 }
-                voiceState = 'IDLE';
-                updateFeedback("✅ آماده دستور بعدی", true);
+                convState = 'IDLE'; // پایان مکالمه
+                updateStatus("✅ آماده", true);
                 return;
             }
 
             // دستورات اصلی
             if (cmd.includes('گزارش') || cmd.includes('وضعیت') || cmd.includes('چقدر')) {
                 giveDetailedReport();
+                convState = 'IDLE';
             } 
             else if (cmd.includes('آخرین') || cmd.includes('جدید')) {
                 if (expenses.length > 0) {
                     const e = expenses[0];
-                    let msg = `آخرین خرید: ${e.desc}، مبلغ ${e.amount.toLocaleString('fa-IR')} تومان`;
-                    if(e.note) msg += `. توضیح: ${e.note}`;
-                    speak(msg);
-                } else speak("هنوز خریدی ثبت نشده.");
+                    speak(`آخرین: ${e.desc}، ${e.amount.toLocaleString('fa-IR')} تومان${e.note ? '. توضیح: '+e.note : ''}`);
+                } else speak("هنوز خریدی نیست.");
+                convState = 'IDLE';
             }
             else if (cmd.includes('ثبت') || cmd.includes('خرید') || cmd.includes('هزینه')) {
-                // تلاش برای استخراج همه چیز در یک جمله
                 const nums = cmd.match(/\d+/g);
                 if (nums && nums.length > 0) {
+                    // ثبت یک‌مرحله‌ای
                     let amt = parseInt(nums[nums.length-1]);
                     if (cmd.includes('هزار')) amt *= 1000;
-                    let desc = cmd.replace(/[0-9]/g, '').replace(/هزار|میلیون|تومان|ریال|ثبت|کردم|خرید|هزینه/g, '').trim();
-                    if(desc.length < 2) desc = "خرید صوتی";
-                    
+                    let desc = cmd.replace(/[0-9]/g, '').replace(/هزار|میلیون|تومان|ریال|ثبت|کردم|خرید|هزینه/g, '').trim() || "خرید";
                     addExpense(desc, amt);
                     speak(`${amt.toLocaleString('fa-IR')} تومان بابت ${desc} ثبت شد.`);
+                    convState = 'IDLE';
                 } else {
-                    // شروع فرآیند پرسشگری
+                    // شروع مکالمه چندمرحله‌ای
                     speak("چی خریدی؟");
-                    updateFeedback("💬 چی خریدی؟", true);
-                    voiceState = 'ASKING_DESC';
-                    setTimeout(() => recognition.start(), 1500);
+                    updateStatus("💬 چی خریدی؟", true);
+                    convState = 'ASK_DESC';
                 }
             }
             else if (cmd.includes('پاک') || cmd.includes('حذف همه')) {
                 if(confirm("همه داده‌ها پاک شوند؟")) {
                     expenses = []; saveData(); speak("همه چیز پاک شد.");
                 }
+                convState = 'IDLE';
             }
             else {
                 speak("نفهمیدم. بگو: گزارش، آخرین خرید، یا ثبت هزینه");
+                convState = 'IDLE';
             }
         }
 
         function giveDetailedReport() {
             if (expenses.length === 0) { speak("هیچ خریدی ندارید."); return; }
-            
             const todayStr = new Date().toLocaleDateString('fa-IR');
-            const todayExpenses = expenses.filter(i => i.date === todayStr);
+            const todayExp = expenses.filter(i => i.date === todayStr);
             
-            if (todayExpenses.length === 0) {
-                speak("امروز هنوز خرجی نداشته‌اید.");
-                return;
-            }
-
-            const totalToday = todayExpenses.reduce((s,i) => s+i.amount, 0);
-            let report = `امروز ${todayExpenses.length} خرید داشتید. جمع کل: ${totalToday.toLocaleString('fa-IR')} تومان. `;
-            report += "ریز خریدها: ";
+            if (todayExp.length === 0) { speak("امروز خرجی نداشتید."); return; }
             
-            todayExpenses.forEach((e, idx) => {
-                report += `${idx+1}. ${e.desc} ${e.amount.toLocaleString('fa-IR')} تومان`;
-                if(e.note) report += `، (${e.note})`;
-                report += ". ";
+            const total = todayExp.reduce((s,i) => s+i.amount, 0);
+            let report = `امروز ${todayExp.length} خرید. جمع: ${total.toLocaleString('fa-IR')} تومان. ریز: `;
+            todayExp.forEach((e, idx) => {
+                report += `${idx+1}. ${e.desc} ${e.amount.toLocaleString('fa-IR')}${e.note ? '('+e.note+')' : ''}. `;
             });
-            
             speak(report);
         }
 
         function speak(text) {
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(text);
-            u.lang = 'fa-IR'; u.rate = 0.95; u.pitch = 1;
+            u.lang = 'fa-IR'; u.rate = 0.95;
             window.speechSynthesis.speak(u);
         }
 
@@ -325,8 +318,8 @@
                 document.getElementById('descInput').value = '';
                 document.getElementById('amountInput').value = '';
                 document.getElementById('noteInput').value = '';
-                speak("خرید دستی با موفقیت ثبت شد.");
-            } else showToast("⚠️ اطلاعات ناقص است");
+                speak("ثبت دستی انجام شد.");
+            } else showToast("⚠️ اطلاعات ناقص");
         }
 
         function showToast(msg) {
