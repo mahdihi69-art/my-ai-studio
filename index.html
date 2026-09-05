@@ -3,180 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Studio Pro</title>
+  <title>AI Studio - Offline</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-    body { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); color: #ffffff; min-height: 100vh; padding: 20px; }
-    .app-container { max-width: 600px; margin: 0 auto; }
-    .app-header { text-align: center; padding: 30px 0; border-bottom: 2px solid rgba(255,255,255,0.1); margin-bottom: 30px; }
-    .app-header h1 { font-size: 32px; margin-bottom: 10px; background: linear-gradient(45deg, #00d4ff, #ff00ea, #00ff88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .app-header p { color: #aaa; font-size: 14px; }
-    .status-bar { background: rgba(0, 255, 136, 0.1); border: 1px solid #00ff88; border-radius: 10px; padding: 10px; margin-bottom: 20px; text-align: center; font-size: 13px; color: #00ff88; }
-    .media-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border-radius: 20px; padding: 25px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 20px; }
-    .media-card h2 { font-size: 20px; margin-bottom: 15px; color: #00d4ff; }
-    .input-field { width: 100%; background: rgba(0, 0, 0, 0.4); border: 2px solid rgba(255, 255, 255, 0.2); color: white; padding: 15px; border-radius: 12px; font-size: 15px; margin-bottom: 15px; resize: vertical; }
-    .input-field:focus { outline: none; border-color: #00d4ff; }
-    .model-select { width: 100%; background: rgba(0, 0, 0, 0.4); border: 2px solid rgba(255, 255, 255, 0.2); color: white; padding: 15px; border-radius: 12px; font-size: 15px; margin-bottom: 15px; }
-    .action-btn { background: linear-gradient(45deg, #00d4ff, #0066ff); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; transition: all 0.3s; }
-    .action-btn:disabled { background: #555; cursor: not-allowed; }
-    .loading { display: none; text-align: center; padding: 30px; color: #00d4ff; }
-    .spinner { border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: #00d4ff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .error-box { background: rgba(255, 0, 0, 0.1); border-right: 4px solid #ff4444; padding: 15px; margin-top: 15px; border-radius: 12px; font-size: 14px; display: none; color: #ffaaaa; line-height: 1.6; }
-    .result-box { background: rgba(0, 255, 136, 0.1); border-right: 4px solid #00ff88; padding: 20px; margin-top: 15px; border-radius: 12px; font-size: 14px; display: none; color: #00ff88; white-space: pre-wrap; line-height: 1.8; }
-    .info-box { background: rgba(255, 193, 7, 0.1); border-right: 4px solid #ffc107; padding: 15px; margin-top: 15px; border-radius: 12px; font-size: 13px; display: none; color: #ffc107; line-height: 1.6; }
-    .info-box a { color: #00d4ff; text-decoration: none; }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Tahoma, sans-serif; }
+    body { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; min-height: 100vh; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; }
+    h1 { text-align: center; color: #00d4ff; margin-bottom: 30px; font-size: 28px; }
+    .card { background: rgba(255,255,255,0.05); padding: 25px; border-radius: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+    textarea { width: 100%; background: rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.2); color: white; padding: 15px; border-radius: 12px; font-size: 15px; margin-bottom: 15px; resize: vertical; min-height: 100px; }
+    textarea:focus { outline: none; border-color: #00d4ff; }
+    button { background: linear-gradient(45deg, #00d4ff, #0066ff); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; }
+    button:disabled { background: #555; cursor: not-allowed; }
+    .loading { display: none; text-align: center; padding: 20px; color: #00d4ff; }
+    .result { display: none; background: rgba(0,255,136,0.1); border-right: 4px solid #00ff88; padding: 20px; border-radius: 12px; margin-top: 15px; line-height: 1.8; }
+    .error { display: none; background: rgba(255,0,0,0.1); border-right: 4px solid #ff4444; padding: 15px; border-radius: 12px; margin-top: 15px; color: #ffaaaa; }
+    .status { text-align: center; padding: 10px; background: rgba(255,193,7,0.1); border-radius: 10px; margin-bottom: 20px; color: #ffc107; font-size: 13px; }
   </style>
 </head>
 <body>
-
-  <div class="app-container">
-    <header class="app-header">
-      <h1>🤖 AI Studio Pro</h1>
-      <p>Powered by Hugging Face • Free</p>
-    </header>
-
-    <div class="status-bar" id="statusBar">✅ Ready</div>
-
-    <article class="media-card">
-      <h2>✍️ AI Chat</h2>
+  <div class="container">
+    <h1>🤖 AI Studio - آفلاین</h1>
+    
+    <div class="status" id="status">️ در حال بارگذاری مدل... (بار اول ۲-۳ دقیقه)</div>
+    
+    <div class="card">
+      <textarea id="prompt" placeholder="سوال یا متن خود را اینجا بنویسید...&#10;&#10;مثال: یک داستان کوتاه درباره یک ربات شجاع بنویس"></textarea>
+      <button id="btn" onclick="generate()" disabled>⏳ در حال آماده‌سازی...</button>
       
-      <select id="modelSelect" class="model-select">
-        <option value="HuggingFaceH4/zephyr-7b-beta">Zephyr 7B</option>
-        <option value="mistralai/Mistral-7B-Instruct-v0.3">Mistral 7B</option>
-        <option value="microsoft/Phi-3-mini-4k-instruct">Phi-3 Mini</option>
-      </select>
-      
-      <textarea id="promptInput" class="input-field" rows="4" placeholder="Ask anything... Example: Write a short story about a brave robot"></textarea>
-      
-      <button class="action-btn" id="generateBtn" onclick="callAIAPI()">🚀 Generate</button>
-      
-      <div id="loadingArea" class="loading">
-        <div class="spinner"></div>
-        <p><strong>Processing...</strong><br><small id="loadingText">Loading model...</small></p>
+      <div class="loading" id="loading">
+        <div style="border: 4px solid rgba(255,255,255,0.1); border-left-color: #00d4ff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+        <p>در حال پردازش...</p>
       </div>
-
-      <div id="errorArea" class="error-box"></div>
-      <div id="infoArea" class="info-box"></div>
       
-      <div id="resultArea" class="result-box">
-        <strong>✨ AI Response:</strong><br><br>
-        <span id="responseText"></span>
-      </div>
-    </article>
+      <div class="error" id="error"></div>
+      <div class="result" id="result"></div>
+    </div>
   </div>
 
-  <script>
-    const HF_TOKEN = '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';
-    
-    // CORS Proxy to bypass browser restrictions
-    const CORS_PROXY = 'https://corsproxy.io/?';
-    const HF_API_URL = 'https://api-inference.huggingface.co/models/';
+  <script type="module">
+    import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
 
-    async function callAIAPI() {
-      const prompt = document.getElementById('promptInput').value.trim();
-      const model = document.getElementById('modelSelect').value;
-      const btn = document.getElementById('generateBtn');
-      const loading = document.getElementById('loadingArea');
-      const loadingText = document.getElementById('loadingText');
-      const errorArea = document.getElementById('errorArea');
-      const infoArea = document.getElementById('infoArea');
-      const resultArea = document.getElementById('resultArea');
-      const responseText = document.getElementById('responseText');
-      const statusBar = document.getElementById('statusBar');
+    let engine = null;
 
-      if (prompt === "") {
-        showError('❌ Please enter a prompt first!');
+    async function init() {
+      try {
+        const status = document.getElementById('status');
+        status.innerHTML = ' در حال دانلود مدل... (حدود ۲GB - صبر کنید)';
+        
+        engine = await CreateMLCEngine("Llama-3.2-1B-Instruct-q4f32_1-MLC", {
+          initProgressCallback: (progress) => {
+            status.innerHTML = `⏳ ${progress.text}`;
+          }
+        });
+        
+        status.innerHTML = '✅ آماده! می‌توانید سوال بپرسید.';
+        status.style.background = 'rgba(0,255,136,0.1)';
+        status.style.color = '#00ff88';
+        document.getElementById('btn').disabled = false;
+        document.getElementById('btn').innerHTML = '🚀 تولید پاسخ';
+      } catch (err) {
+        document.getElementById('status').innerHTML = '❌ خطا در بارگذاری مدل: ' + err.message;
+        document.getElementById('status').style.background = 'rgba(255,0,0,0.1)';
+        document.getElementById('status').style.color = '#ff4444';
+      }
+    }
+
+    window.generate = async function() {
+      const prompt = document.getElementById('prompt').value.trim();
+      if (!prompt) {
+        alert('لطفاً متنی بنویسید!');
         return;
       }
 
+      const btn = document.getElementById('btn');
+      const loading = document.getElementById('loading');
+      const error = document.getElementById('error');
+      const result = document.getElementById('result');
+
       btn.disabled = true;
-      btn.innerText = "⏳ Processing...";
-      loading.style.display = "block";
-      errorArea.style.display = "none";
-      infoArea.style.display = "none";
-      resultArea.style.display = "none";
-      statusBar.innerText = "⏳ Sending request...";
+      loading.style.display = 'block';
+      error.style.display = 'none';
+      result.style.display = 'none';
 
       try {
-        // Add CORS proxy to URL
-        const fullUrl = CORS_PROXY + encodeURIComponent(HF_API_URL + model);
-        
-        const response = await fetch(fullUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + HF_TOKEN
-          },
-          body: JSON.stringify({
-            inputs: prompt,
-            parameters: {
-              max_new_tokens: 300,
-              temperature: 0.7,
-              return_full_text: false,
-              do_sample: true
-            }
-          })
+        const reply = await engine.chat.completions.create({
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          max_tokens: 500
         });
 
-        if (response.status === 403) {
-          showLicenseInfo(model);
-          throw new Error('403: License required. Click the link below to accept.');
-        }
-        
-        if (response.status === 503) {
-          throw new Error('503: Model is loading. Please wait 30 seconds and try again.');
-        }
-
-        if (response.status === 429) {
-          throw new Error('429: Rate limit. Please wait 1 minute.');
-        }
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 150)}`);
-        }
-
-        const data = await response.json();
-        
-        let aiText = '';
-        if (Array.isArray(data) && data[0] && data[0].generated_text) {
-          aiText = data[0].generated_text.trim();
-        } else if (data.generated_text) {
-          aiText = data.generated_text.trim();
-        } else {
-          aiText = JSON.stringify(data, null, 2);
-        }
-
-        loading.style.display = "none";
+        loading.style.display = 'none';
         btn.disabled = false;
-        btn.innerText = "🚀 Generate";
-        statusBar.innerText = "✅ Success!";
-        
-        resultArea.style.display = "block";
-        responseText.innerText = aiText;
-
-      } catch (error) {
-        loading.style.display = "none";
+        result.style.display = 'block';
+        result.innerHTML = '<strong>✨ پاسخ:</strong><br><br>' + reply.choices[0].message.content;
+      } catch (err) {
+        loading.style.display = 'none';
         btn.disabled = false;
-        btn.innerText = "🚀 Generate";
-        statusBar.innerText = "❌ Error";
-        showError(error.message);
+        error.style.display = 'block';
+        error.innerHTML = '❌ خطا: ' + err.message;
       }
-    }
+    };
 
-    function showError(message) {
-      const errorArea = document.getElementById('errorArea');
-      errorArea.style.display = "block";
-      errorArea.innerHTML = '<strong>❌ Error:</strong><br>' + message;
-    }
-
-    function showLicenseInfo(model) {
-      const infoArea = document.getElementById('infoArea');
-      const licenseUrl = 'https://huggingface.co/' + model;
-      infoArea.style.display = "block";
-      infoArea.innerHTML = `<strong>️ License Required:</strong><br><br>1. Click link below<br>2. Fill form (any name/email)<br>3. Click "Agree"<br>4. Try again<br><br><a href="${licenseUrl}" target="_blank"> Accept License for ${model}</a>`;
-    }
+    // Initialize on load
+    init();
   </script>
 </body>
 </html>
