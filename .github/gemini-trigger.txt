@@ -1,0 +1,1 @@
+Trigger Gemini integration workflow after API secret setup.
