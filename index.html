@@ -1,193 +1,1647 @@
-body { 
-        background: #1a1a2e; 
-        color: white; 
-        min-height: 100vh; 
-        padding: 20px; 
-        padding-bottom: 120px;
-        max-width: 600px;
-        margin: 0 auto;
-    }
-    
-    .header { text-align: center; margin-bottom: 20px; }
-    .header h1 { font-size: 24px; margin-bottom: 5px; }
-    .header p { color: #888; font-size: 12px; }
-    
-    .assistant-avatar {
-        width: 100px;
-        height: 100px;
-        margin: 20px auto;
-        border-radius: 50%;
-        background: #16213e;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 50px;
-        transition: all 0.3s;
-    }
-    
-    .assistant-avatar.speaking { animation: pulse 0.5s infinite; background: #00b894; }
-    .assistant-avatar.listening { animation: pulse 1s infinite; background: #ff7675; }
-    
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-    }
-    
-    .balance-card {
-        background: #16213e;
-        padding: 25px;
-        border-radius: 15px;
-        text-align: center;
-        margin-bottom: 20px;
-    }
-    
-    .balance-amount { font-size: 30px; color: #00b894; margin: 10px 0; }
-    
-    .status-box {
-        background: #0f3460;
-        padding: 15px;
-        border-radius: 10px;
-        margin-top: 15px;
-        font-size: 14px;
-        min-height: 50px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        line-height: 1.6;
-    }
-    
-    .chat-box {
-        background: #16213e;
-        border-radius: 10px;
-        padding: 15px;
-        margin: 20px 0;
-        max-height: 300px;
-        overflow-y: auto;
-    }
-    
-    .chat-message {
-        padding: 10px;
-        margin-bottom: 8px;
-        border-radius: 8px;
-        font-size: 14px;
-        line-height: 1.5;
-    }
-    
-    .chat-message.user { background: #0f3460; text-align: right; }
-    .chat-message.assistant { background: #1a1a2e; border: 1px solid #00b894; color: #00b894; }
-    
-    .manual-section {
-        background: #16213e;
-        padding: 20px;
-        border-radius: 15px;
-        margin-bottom: 20px;
-    }
-    
-    input, textarea {
-        width: 100%;
-        padding: 12px;
-        border: 1px solid #0f3460;
-        border-radius: 8px;
-        background: #1a1a2e;
-        color: white;
-        margin-bottom: 10px;
-        font-size: 14px;
-    }
-    
-    .btn-add {
-        width: 100%;
-        background: #00b894;
-        color: white;
-        border: none;
-        padding: 15px;
-        border-radius: 8px;
-        font-size: 16px;
-        cursor: pointer;
-    }
-    
-    .mic-wrapper {
-        position: fixed;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-    }
-    
-    .mic-btn {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        border: none;
-        background: #ff7675;
-        color: white;
-        font-size: 32px;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-    
-    .mic-btn.listening {
-        background: #d63031;
-        box-shadow: 0 0 0 20px rgba(255, 118, 117, 0.3);
-    }
-    
-    .history-list { list-style: none; margin-top: 20px; }
-    
-    .history-item {
-        background: #16213e;
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 10px;
-        border-right: 4px solid #ff7675;
-        position: relative;
-    }
-    
-    .item-header {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 5px;
-    }
-    
-    .item-title { font-weight: bold; }
-    .item-price { color: #ff7675; }
-    
-    .item-date {
-        color: #888;
-        font-size: 12px;
-        margin-top: 5px;
-        direction: ltr;
-        text-align: left;
-    }
-    
-    .item-actions {
-        display: flex;
-        gap: 5px;
-        margin-top: 10px;
-    }
-    
-    .btn-edit, .btn-delete {
-        padding: 5px 10px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 12px;
-    }
-    
-    .btn-edit { background: #fdcb6e; color: #2d3436; }
-    .btn-delete { background: #d63031; color: white; }
-    
-    .toast {
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%) translateY(-100px);
-        background: #00b894;
-        color: white;
-        padding: 15px 25px;
-        border-radius: 25px;
-        transition: 0.3s;
-        z-index: 300;
-    }
-    
-    .toast.show { transform: translateX(-50%) translateY(0); }
-    .toast.error { background: #d63031; }
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>پویا | مدیر مالی هوشمند</title>
+
+<style>
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    font-family:Tahoma,"Segoe UI",sans-serif;
+}
+
+body{
+    background:#f4f6fb;
+    color:#20233a;
+    min-height:100vh;
+    padding:16px;
+    padding-bottom:130px;
+}
+
+.container{
+    max-width:650px;
+    margin:auto;
+}
+
+.header{
+    text-align:center;
+    margin:10px 0 18px;
+}
+
+.header h1{
+    font-size:25px;
+}
+
+.header p{
+    color:#777;
+    font-size:13px;
+    margin-top:6px;
+}
+
+.balance-card{
+    background:linear-gradient(135deg,#635bdb,#8e86f5);
+    color:white;
+    padding:25px 20px;
+    border-radius:25px;
+    text-align:center;
+    box-shadow:0 15px 35px rgba(99,91,219,.25);
+    margin-bottom:18px;
+}
+
+.balance-title{
+    font-size:13px;
+    opacity:.85;
+}
+
+.balance{
+    font-size:34px;
+    font-weight:bold;
+    margin:10px 0;
+    direction:rtl;
+}
+
+.summary{
+    display:flex;
+    gap:10px;
+    margin-top:18px;
+}
+
+.summary-box{
+    flex:1;
+    background:rgba(255,255,255,.16);
+    border-radius:15px;
+    padding:12px 5px;
+}
+
+.summary-box small{
+    display:block;
+    opacity:.8;
+    margin-bottom:5px;
+}
+
+.summary-box strong{
+    font-size:15px;
+}
+
+.voice-status{
+    background:rgba(255,255,255,.16);
+    padding:12px;
+    border-radius:18px;
+    margin-top:18px;
+    min-height:44px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:13px;
+}
+
+.card{
+    background:white;
+    padding:18px;
+    border-radius:20px;
+    box-shadow:0 4px 20px rgba(0,0,0,.05);
+    margin-bottom:18px;
+}
+
+.card h2{
+    font-size:17px;
+    margin-bottom:14px;
+}
+
+input,textarea,select{
+    width:100%;
+    border:2px solid #eee;
+    background:#fafafa;
+    border-radius:13px;
+    padding:13px;
+    margin-bottom:10px;
+    font-size:14px;
+}
+
+input:focus,textarea:focus,select:focus{
+    outline:none;
+    border-color:#6c63df;
+    background:white;
+}
+
+textarea{
+    resize:none;
+    height:65px;
+}
+
+button{
+    border:none;
+    cursor:pointer;
+}
+
+.add-btn{
+    width:100%;
+    background:#635bdb;
+    color:white;
+    padding:14px;
+    border-radius:13px;
+    font-size:15px;
+    font-weight:bold;
+}
+
+.filter-buttons{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+}
+
+.filter-buttons button{
+    flex:1;
+    padding:10px;
+    border-radius:12px;
+    background:#eee;
+}
+
+.filter-buttons button.active{
+    background:#635bdb;
+    color:white;
+}
+
+.history-item{
+    background:white;
+    padding:15px;
+    border-radius:17px;
+    margin-bottom:10px;
+    box-shadow:0 2px 12px rgba(0,0,0,.04);
+    border-right:5px solid #d63031;
+}
+
+.history-item.income{
+    border-right-color:#00b894;
+}
+
+.item-top{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+}
+
+.item-title{
+    font-weight:bold;
+}
+
+.item-amount{
+    font-weight:bold;
+    direction:rtl;
+}
+
+.expense{
+    color:#d63031;
+}
+
+.income-text{
+    color:#00a884;
+}
+
+.item-info{
+    color:#999;
+    font-size:11px;
+    margin-top:7px;
+}
+
+.item-note{
+    color:#777;
+    font-size:12px;
+    margin-top:6px;
+}
+
+.empty{
+    text-align:center;
+    color:#999;
+    padding:25px;
+}
+
+.mic-container{
+    position:fixed;
+    bottom:25px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:100;
+    text-align:center;
+}
+
+.mic-btn{
+    width:78px;
+    height:78px;
+    border-radius:50%;
+    background:linear-gradient(135deg,#ff7675,#d63031);
+    color:white;
+    font-size:31px;
+    box-shadow:0 10px 30px rgba(214,48,49,.3);
+}
+
+.mic-btn.listening{
+    animation:pulse 1.3s infinite;
+    transform:scale(1.08);
+}
+
+@keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(214,48,49,.4)}
+    70%{box-shadow:0 0 0 25px rgba(214,48,49,0)}
+    100%{box-shadow:0 0 0 0 rgba(214,48,49,0)}
+}
+
+.mic-label{
+    background:#20233a;
+    color:white;
+    padding:5px 12px;
+    border-radius:20px;
+    font-size:11px;
+    margin-top:5px;
+}
+
+.toast{
+    position:fixed;
+    top:18px;
+    left:50%;
+    transform:translate(-50%,-120px);
+    background:#20233a;
+    color:white;
+    padding:13px 22px;
+    border-radius:30px;
+    z-index:300;
+    transition:.35s;
+    font-size:13px;
+    max-width:90%;
+    text-align:center;
+}
+
+.toast.show{
+    transform:translate(-50%,0);
+}
+
+.ai-message{
+    background:#f2f1ff;
+    padding:13px;
+    border-radius:15px;
+    line-height:1.8;
+    font-size:13px;
+    margin-top:10px;
+}
+
+.danger{
+    background:#d63031;
+    color:white;
+    padding:12px;
+    width:100%;
+    border-radius:12px;
+}
 </style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+    <h1>💰 پویا</h1>
+    <p>مدیر مالی هوشمند و صوتی شما</p>
+</div>
+
+<div class="balance-card">
+
+    <div class="balance-title">موجودی فعلی</div>
+
+    <div class="balance" id="balance">
+        ۰ تومان
+    </div>
+
+    <div class="summary">
+
+        <div class="summary-box">
+            <small>درآمد</small>
+            <strong id="incomeTotal">۰</strong>
+        </div>
+
+        <div class="summary-box">
+            <small>هزینه</small>
+            <strong id="expenseTotal">۰</strong>
+        </div>
+
+    </div>
+
+    <div class="voice-status" id="voiceStatus">
+        🎤 برای صحبت با پویا روی میکروفون بزنید
+    </div>
+
+</div>
+
+<div class="card">
+
+    <h2>🤖 گفت‌وگو با پویا</h2>
+
+    <div class="ai-message" id="aiMessage">
+        سلام! من پویا هستم. می‌تونی به من بگی:
+        <br>
+        «۵۰۰ هزار تومان برای بنزین خرج کردم»
+        <br>
+        یا بپرسی:
+        <br>
+        «امروز چقدر خرج کردم؟»
+    </div>
+
+</div>
+
+<div class="card">
+
+    <h2>➕ ثبت دستی</h2>
+
+    <select id="typeInput">
+        <option value="expense">💸 هزینه</option>
+        <option value="income">💰 درآمد</option>
+    </select>
+
+    <input id="descInput" type="text" placeholder="عنوان">
+
+    <input id="amountInput" type="number" placeholder="مبلغ به تومان" inputmode="numeric">
+
+    <textarea id="noteInput" placeholder="توضیحات"></textarea>
+
+    <button class="add-btn" onclick="addManual()">
+        ثبت اطلاعات
+    </button>
+
+</div>
+
+<div class="card">
+
+    <h2>📋 تراکنش‌ها</h2>
+
+    <div class="filter-buttons">
+        <button class="active" onclick="setFilter('all',this)">همه</button>
+        <button onclick="setFilter('expense',this)">هزینه‌ها</button>
+        <button onclick="setFilter('income',this)">درآمدها</button>
+    </div>
+
+    <div id="history"></div>
+
+</div>
+
+<div class="card">
+
+    <h2>⚙️ مدیریت اطلاعات</h2>
+
+    <button class="danger" onclick="clearAll()">
+        🗑️ حذف تمام اطلاعات
+    </button>
+
+</div>
+
+</div>
+
+<div class="mic-container">
+
+    <button
+        id="micBtn"
+        class="mic-btn"
+        onclick="toggleVoice()">
+        🎤
+    </button>
+
+    <div class="mic-label">
+        صحبت با پویا
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+/* =========================================================
+   DATABASE
+========================================================= */
+
+let transactions =
+    JSON.parse(localStorage.getItem("POUYA_FINANCE_DB")) || [];
+
+let filter = "all";
+
+let conversationState = "IDLE";
+
+let tempTransaction = {
+    type:null,
+    desc:null,
+    amount:null,
+    note:null
+};
+
+
+/* =========================================================
+   STORAGE
+========================================================= */
+
+function saveData(){
+
+    localStorage.setItem(
+        "POUYA_FINANCE_DB",
+        JSON.stringify(transactions)
+    );
+
+    render();
+}
+
+
+/* =========================================================
+   NUMBER HELPERS
+========================================================= */
+
+function normalizeDigits(text){
+
+    const fa = "۰۱۲۳۴۵۶۷۸۹";
+    const ar = "٠١٢٣٤٥٦٧٨٩";
+
+    return text
+        .replace(/[۰-۹]/g,d=>fa.indexOf(d))
+        .replace(/[٠-٩]/g,d=>ar.indexOf(d));
+}
+
+
+const numberWords = {
+
+    "صفر":0,
+    "یک":1,
+    "اول":1,
+    "دو":2,
+    "سه":3,
+    "چهار":4,
+    "پنج":5,
+    "شش":6,
+    "هفت":7,
+    "هشت":8,
+    "نه":9,
+    "ده":10,
+    "یازده":11,
+    "دوازده":12,
+    "سیزده":13,
+    "چهارده":14,
+    "پانزده":15,
+    "شانزده":16,
+    "هفده":17,
+    "هجده":18,
+    "نوزده":19,
+    "بیست":20,
+    "سی":30,
+    "چهل":40,
+    "پنجاه":50,
+    "شصت":60,
+    "هفتاد":70,
+    "هشتاد":80,
+    "نود":90,
+    "صد":100,
+    "دویست":200,
+    "سیصد":300,
+    "چهارصد":400,
+    "پانصد":500,
+    "ششصد":600,
+    "هفتصد":700,
+    "هشتصد":800,
+    "نهصد":900
+};
+
+
+function wordNumber(text){
+
+    let total = 0;
+    let current = 0;
+
+    const words = text.split(/\s+/);
+
+    for(const word of words){
+
+        if(numberWords[word] !== undefined){
+
+            current += numberWords[word];
+
+        }
+
+        else if(word === "هزار"){
+
+            if(current === 0) current = 1;
+
+            total += current * 1000;
+
+            current = 0;
+
+        }
+
+        else if(word === "میلیون"){
+
+            if(current === 0) current = 1;
+
+            total += current * 1000000;
+
+            current = 0;
+        }
+
+    }
+
+    return total + current;
+}
+
+
+function extractAmount(text){
+
+    text = normalizeDigits(text);
+
+    const digits = text.match(/\d+(?:[,.]\d+)?/g);
+
+    if(digits && digits.length){
+
+        let value = parseFloat(
+            digits[digits.length-1]
+                .replace(/,/g,"")
+        );
+
+        if(text.includes("میلیون"))
+            value *= 1000000;
+
+        else if(text.includes("هزار"))
+            value *= 1000;
+
+        return Math.round(value);
+    }
+
+    const value = wordNumber(text);
+
+    return value > 0 ? value : null;
+}
+
+
+/* =========================================================
+   TRANSACTION
+========================================================= */
+
+function addTransaction(
+    type,
+    desc,
+    amount,
+    note=""
+){
+
+    if(
+        !desc ||
+        !amount ||
+        amount <= 0
+    ){
+
+        showToast("⚠️ اطلاعات ناقص است");
+
+        return false;
+    }
+
+    transactions.unshift({
+
+        id:Date.now(),
+
+        type:type,
+
+        desc:desc,
+
+        amount:Number(amount),
+
+        note:note,
+
+        date:new Date().toLocaleDateString("fa-IR"),
+
+        time:new Date().toLocaleTimeString(
+            "fa-IR",
+            {
+                hour:"2-digit",
+                minute:"2-digit"
+            }
+        )
+
+    });
+
+    saveData();
+
+    return true;
+}
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+function render(){
+
+    let income = 0;
+    let expense = 0;
+
+    transactions.forEach(t=>{
+
+        if(t.type === "income")
+            income += t.amount;
+
+        else
+            expense += t.amount;
+
+    });
+
+    const balance = income - expense;
+
+    document.getElementById("incomeTotal")
+        .innerText =
+        income.toLocaleString("fa-IR") + " تومان";
+
+    document.getElementById("expenseTotal")
+        .innerText =
+        expense.toLocaleString("fa-IR") + " تومان";
+
+    document.getElementById("balance")
+        .innerText =
+        balance.toLocaleString("fa-IR") + " تومان";
+
+
+    let list = transactions;
+
+    if(filter !== "all"){
+
+        list = transactions.filter(
+            t=>t.type === filter
+        );
+
+    }
+
+    const history =
+        document.getElementById("history");
+
+    if(!list.length){
+
+        history.innerHTML =
+            `<div class="empty">
+                هنوز تراکنشی ثبت نشده است.
+            </div>`;
+
+        return;
+    }
+
+
+    history.innerHTML =
+        list.map(t=>{
+
+            const incomeClass =
+                t.type === "income"
+                    ? "income"
+                    : "";
+
+            const amountClass =
+                t.type === "income"
+                    ? "income-text"
+                    : "expense";
+
+            const sign =
+                t.type === "income"
+                    ? "+"
+                    : "-";
+
+            return `
+
+            <div class="history-item ${incomeClass}">
+
+                <div class="item-top">
+
+                    <span class="item-title">
+                        ${escapeHTML(t.desc)}
+                    </span>
+
+                    <span class="item-amount ${amountClass}">
+                        ${sign}
+                        ${t.amount.toLocaleString("fa-IR")}
+                        تومان
+                    </span>
+
+                </div>
+
+                ${
+                    t.note
+                    ?
+                    `<div class="item-note">
+                        📝 ${escapeHTML(t.note)}
+                    </div>`
+                    :""
+                }
+
+                <div class="item-info">
+                    ${t.type==="income"?"💰 درآمد":"💸 هزینه"}
+                    |
+                    ${t.date}
+                    |
+                    ${t.time}
+                </div>
+
+            </div>
+
+            `;
+
+        }).join("");
+}
+
+
+function escapeHTML(text){
+
+    return String(text)
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+
+/* =========================================================
+   MANUAL
+========================================================= */
+
+function addManual(){
+
+    const type =
+        document.getElementById("typeInput").value;
+
+    const desc =
+        document.getElementById("descInput").value.trim();
+
+    const amount =
+        parseInt(
+            document.getElementById("amountInput").value
+        );
+
+    const note =
+        document.getElementById("noteInput").value.trim();
+
+    if(
+        addTransaction(
+            type,
+            desc,
+            amount,
+            note
+        )
+    ){
+
+        document.getElementById("descInput").value="";
+        document.getElementById("amountInput").value="";
+        document.getElementById("noteInput").value="";
+
+        speak(
+            type==="income"
+            ? "درآمد با موفقیت ثبت شد."
+            : "هزینه با موفقیت ثبت شد."
+        );
+
+        showAIMessage(
+            type==="income"
+            ? "💰 درآمد ثبت شد."
+            : "💸 هزینه ثبت شد."
+        );
+
+    }
+}
+
+
+/* =========================================================
+   FILTER
+========================================================= */
+
+function setFilter(value,button){
+
+    filter=value;
+
+    document
+        .querySelectorAll(".filter-buttons button")
+        .forEach(b=>b.classList.remove("active"));
+
+    button.classList.add("active");
+
+    render();
+}
+
+
+/* =========================================================
+   SPEECH RECOGNITION
+========================================================= */
+
+const SpeechRecognition =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+let recognition = null;
+
+let listening = false;
+
+const micBtn =
+    document.getElementById("micBtn");
+
+const voiceStatus =
+    document.getElementById("voiceStatus");
+
+
+if(SpeechRecognition){
+
+    recognition = new SpeechRecognition();
+
+    recognition.lang = "fa-IR";
+
+    recognition.continuous = false;
+
+    recognition.interimResults = true;
+
+    recognition.maxAlternatives = 3;
+
+
+    recognition.onstart = function(){
+
+        listening = true;
+
+        micBtn.classList.add("listening");
+
+        updateVoice(
+            "👂 پویا گوش می‌دهد..."
+        );
+    };
+
+
+    recognition.onresult = function(event){
+
+        let transcript = "";
+
+        for(
+            let i=event.resultIndex;
+            i<event.results.length;
+            i++
+        ){
+
+            transcript +=
+                event.results[i][0].transcript;
+        }
+
+        transcript=transcript.trim();
+
+        if(transcript){
+
+            updateVoice(
+                "🗣️ " + transcript
+            );
+        }
+
+
+        const result =
+            event.results[event.results.length-1];
+
+        if(result.isFinal){
+
+            processVoice(
+                transcript
+            );
+
+        }
+
+    };
+
+
+    recognition.onerror = function(event){
+
+        listening=false;
+
+        micBtn.classList.remove("listening");
+
+        if(event.error === "not-allowed"){
+
+            showToast(
+                "⚠️ اجازه استفاده از میکروفون داده نشده است."
+            );
+
+            updateVoice(
+                "🎤 اجازه میکروفون را فعال کنید"
+            );
+
+        }
+
+        else if(event.error === "no-speech"){
+
+            updateVoice(
+                "🎤 صدایی دریافت نشد"
+            );
+
+        }
+
+        else{
+
+            updateVoice(
+                "⚠️ خطا در تشخیص صدا"
+            );
+        }
+
+    };
+
+
+    recognition.onend=function(){
+
+        listening=false;
+
+        micBtn.classList.remove("listening");
+
+    };
+
+}
+
+
+function toggleVoice(){
+
+    if(!recognition){
+
+        showToast(
+            "❌ مرورگر شما از تشخیص گفتار پشتیبانی نمی‌کند."
+        );
+
+        return;
+    }
+
+    if(listening){
+
+        recognition.stop();
+
+        return;
+    }
+
+    try{
+
+        recognition.start();
+
+    }catch(error){
+
+        console.log(error);
+
+    }
+
+}
+
+
+/* =========================================================
+   VOICE PROCESSOR
+========================================================= */
+
+function processVoice(text){
+
+    if(!text) return;
+
+    text=text.trim();
+
+    showAIMessage(
+        "🗣️ شما گفتید: «"+escapeHTML(text)+"»"
+    );
+
+
+    /* -----------------------------------------
+       Conversation
+    ----------------------------------------- */
+
+    if(conversationState === "ASK_DESC"){
+
+        tempTransaction.desc=text;
+
+        conversationState="ASK_AMOUNT";
+
+        speak(
+            "مبلغ چقدر بود؟"
+        );
+
+        updateVoice(
+            "💰 مبلغ را بگویید..."
+        );
+
+        return;
+    }
+
+
+    if(conversationState === "ASK_AMOUNT"){
+
+        const amount =
+            extractAmount(text);
+
+        if(!amount){
+
+            speak(
+                "مبلغ را متوجه نشدم. لطفاً مثلاً بگویید پانصد هزار تومان."
+            );
+
+            return;
+        }
+
+        tempTransaction.amount=amount;
+
+        conversationState="ASK_NOTE";
+
+        speak(
+            "توضیحی برای این خرید داری؟ اگر نداری بگو نه."
+        );
+
+        updateVoice(
+            "📝 توضیح را بگویید..."
+        );
+
+        return;
+    }
+
+
+    if(conversationState === "ASK_NOTE"){
+
+        let note=text;
+
+        if(
+            text.includes("نه") ||
+            text.includes("ندارم") ||
+            text.includes("خیر")
+        ){
+
+            note="";
+        }
+
+        tempTransaction.note=note;
+
+        addTransaction(
+            tempTransaction.type,
+            tempTransaction.desc,
+            tempTransaction.amount,
+            note
+        );
+
+        speak(
+            "انجام شد. "+
+            tempTransaction.amount.toLocaleString("fa-IR")+
+            " تومان ثبت شد."
+        );
+
+        showAIMessage(
+            "✅ تراکنش با موفقیت ثبت شد."
+        );
+
+        conversationState="IDLE";
+
+        return;
+    }
+
+
+    /* -----------------------------------------
+       Commands
+    ----------------------------------------- */
+
+    const amount=extractAmount(text);
+
+
+    /* Income */
+
+    if(
+        text.includes("حقوق گرفتم") ||
+        text.includes("درآمد") ||
+        text.includes("دریافت کردم") ||
+        text.includes("پول گرفتم") ||
+        text.includes("واریز شد")
+    ){
+
+        if(amount){
+
+            let desc="درآمد";
+
+            if(text.includes("حقوق"))
+                desc="حقوق";
+
+            addTransaction(
+                "income",
+                desc,
+                amount
+            );
+
+            speak(
+                amount.toLocaleString("fa-IR")+
+                " تومان درآمد ثبت شد."
+            );
+
+            showAIMessage(
+                "💰 درآمد ثبت شد."
+            );
+
+        }else{
+
+            conversationState="ASK_AMOUNT";
+
+            tempTransaction.type="income";
+
+            tempTransaction.desc="درآمد";
+
+            speak(
+                "مبلغ درآمد چقدر بود؟"
+            );
+        }
+
+        return;
+    }
+
+
+    /* Expense */
+
+    if(
+        text.includes("خرج کردم") ||
+        text.includes("خریدم") ||
+        text.includes("خرید کردم") ||
+        text.includes("هزینه کردم") ||
+        text.includes("پرداخت کردم") ||
+        text.includes("خرج شد")
+    ){
+
+        if(amount){
+
+            let desc =
+                extractDescription(text);
+
+            addTransaction(
+                "expense",
+                desc,
+                amount
+            );
+
+            speak(
+                amount.toLocaleString("fa-IR")+
+                " تومان بابت "+
+                desc+
+                " ثبت شد."
+            );
+
+            showAIMessage(
+                "💸 هزینه ثبت شد: "+
+                desc
+            );
+
+        }else{
+
+            conversationState="ASK_DESC";
+
+            tempTransaction.type="expense";
+
+            speak(
+                "چی خریدی یا بابت چی هزینه کردی؟"
+            );
+
+            updateVoice(
+                "🛒 عنوان هزینه را بگویید..."
+            );
+
+        }
+
+        return;
+    }
+
+
+    /* Report */
+
+    if(
+        text.includes("گزارش") ||
+        text.includes("وضعیت") ||
+        text.includes("چقدر خرج") ||
+        text.includes("چقدر هزینه") ||
+        text.includes("امروز چقدر")
+    ){
+
+        dailyReport();
+
+        return;
+    }
+
+
+    /* Balance */
+
+    if(
+        text.includes("موجودی") ||
+        text.includes("چقدر پول دارم") ||
+        text.includes("چقدر دارم") ||
+        text.includes("مانده")
+    ){
+
+        const totals=getTotals();
+
+        speak(
+            "موجودی شما "+
+            totals.balance.toLocaleString("fa-IR")+
+            " تومان است."
+        );
+
+        showAIMessage(
+            "💳 موجودی فعلی: "+
+            totals.balance.toLocaleString("fa-IR")+
+            " تومان"
+        );
+
+        return;
+    }
+
+
+    /* Last */
+
+    if(
+        text.includes("آخرین خرید") ||
+        text.includes("آخرین هزینه") ||
+        text.includes("آخرین تراکنش")
+    ){
+
+        if(!transactions.length){
+
+            speak("هنوز تراکنشی ثبت نشده است.");
+
+            return;
+        }
+
+        const t=transactions[0];
+
+        speak(
+            "آخرین تراکنش "+
+            t.desc+
+            " به مبلغ "+
+            t.amount.toLocaleString("fa-IR")+
+            " تومان بود."
+        );
+
+        return;
+    }
+
+
+    /* Monthly */
+
+    if(
+        text.includes("این ماه") ||
+        text.includes("ماه") &&
+        (
+            text.includes("خرج") ||
+            text.includes("هزینه")
+        )
+    ){
+
+        monthlyReport();
+
+        return;
+    }
+
+
+    /* Delete */
+
+    if(
+        text.includes("حذف همه") ||
+        text.includes("پاک کردن همه") ||
+        text.includes("همه را پاک کن")
+    ){
+
+        clearAll();
+
+        return;
+    }
+
+
+    /* Greeting */
+
+    if(
+        text.includes("سلام") ||
+        text.includes("خوبی") ||
+        text.includes("چه خبر")
+    ){
+
+        speak(
+            "سلام! من پویا هستم. آماده‌ام به مدیریت پولت کمک کنم."
+        );
+
+        showAIMessage(
+            "👋 سلام! چه کاری برایت انجام بدهم؟"
+        );
+
+        return;
+    }
+
+
+    /* Help */
+
+    if(
+        text.includes("کمک") ||
+        text.includes("چه کار") ||
+        text.includes("دستورات")
+    ){
+
+        speak(
+            "می‌توانی بگویی ثبت هزینه، ثبت درآمد، گزارش امروز، موجودی، آخرین خرید یا هزینه این ماه."
+        );
+
+        showAIMessage(
+            "می‌توانی مثلاً بگویی:<br>"+
+            "💸 بنزین ۵۰۰ هزار تومان خرج کردم<br>"+
+            "💰 ۲۰ میلیون حقوق گرفتم<br>"+
+            "📊 امروز چقدر خرج کردم؟<br>"+
+            "💳 چقدر پول دارم؟"
+        );
+
+        return;
+    }
+
+
+    /* Unknown */
+
+    speak(
+        "متوجه منظورت نشدم. اگر درباره دخل و خرج است، دوباره به زبان ساده بگو."
+    );
+
+}
+
+
+/* =========================================================
+   DESCRIPTION EXTRACTION
+========================================================= */
+
+function extractDescription(text){
+
+    let result=text;
+
+    result=normalizeDigits(result);
+
+    result=result
+        .replace(/\d+/g,"")
+        .replace(/هزار/g,"")
+        .replace(/میلیون/g,"")
+        .replace(/تومان/g,"")
+        .replace(/ریال/g,"")
+        .replace(/خرج کردم/g,"")
+        .replace(/هزینه کردم/g,"")
+        .replace(/پرداخت کردم/g,"")
+        .replace(/خرید کردم/g,"")
+        .replace(/خریدم/g,"")
+        .replace(/کردم/g,"")
+        .replace(/برای/g,"")
+        .replace(/بابت/g,"")
+        .replace(/امروز/g,"")
+        .trim();
+
+    return result || "هزینه";
+}
+
+
+/* =========================================================
+   REPORTS
+========================================================= */
+
+function getTotals(){
+
+    let income=0;
+    let expense=0;
+
+    transactions.forEach(t=>{
+
+        if(t.type==="income")
+            income+=t.amount;
+
+        else
+            expense+=t.amount;
+
+    });
+
+    return {
+        income,
+        expense,
+        balance:income-expense
+    };
+}
+
+
+function dailyReport(){
+
+    const today =
+        new Date().toLocaleDateString("fa-IR");
+
+    const list =
+        transactions.filter(
+            t=>t.date===today
+        );
+
+    if(!list.length){
+
+        speak(
+            "امروز هنوز تراکنشی ثبت نشده است."
+        );
+
+        showAIMessage(
+            "📅 امروز تراکنشی ثبت نشده است."
+        );
+
+        return;
+    }
+
+
+    let income=0;
+    let expense=0;
+
+    list.forEach(t=>{
+
+        if(t.type==="income")
+            income+=t.amount;
+
+        else
+            expense+=t.amount;
+
+    });
+
+    const net=income-expense;
+
+    speak(
+        "گزارش امروز: "+
+        list.length+
+        " تراکنش. "+
+        "درآمد "+
+        income.toLocaleString("fa-IR")+
+        " تومان و هزینه "+
+        expense.toLocaleString("fa-IR")+
+        " تومان."
+    );
+
+    showAIMessage(
+        "📊 گزارش امروز<br>"+
+        "💰 درآمد: "+
+        income.toLocaleString("fa-IR")+
+        " تومان<br>"+
+        "💸 هزینه: "+
+        expense.toLocaleString("fa-IR")+
+        " تومان<br>"+
+        "📈 خالص: "+
+        net.toLocaleString("fa-IR")+
+        " تومان"
+    );
+}
+
+
+function monthlyReport(){
+
+    const now=new Date();
+
+    let income=0;
+    let expense=0;
+    let count=0;
+
+    transactions.forEach(t=>{
+
+        const parts=t.date.split("/");
+
+        if(parts.length<2) return;
+
+        const month=parseInt(parts[1]);
+
+        const currentMonth=
+            parseInt(
+                new Intl.DateTimeFormat(
+                    "fa-IR",
+                    {month:"numeric"}
+                ).format(now)
+            );
+
+        if(month===currentMonth){
+
+            count++;
+
+            if(t.type==="income")
+                income+=t.amount;
+
+            else
+                expense+=t.amount;
+        }
+
+    });
+
+    speak(
+        "گزارش این ماه: "+
+        count+
+        " تراکنش. درآمد "+
+        income.toLocaleString("fa-IR")+
+        " تومان و هزینه "+
+        expense.toLocaleString("fa-IR")+
+        " تومان."
+    );
+
+    showAIMessage(
+        "📅 گزارش ماه<br>"+
+        "💰 درآمد: "+
+        income.toLocaleString("fa-IR")+
+        " تومان<br>"+
+        "💸 هزینه: "+
+        expense.toLocaleString("fa-IR")+
+        " تومان"
+    );
+}
+
+
+/* =========================================================
+   SPEAK
+========================================================= */
+
+function speak(text){
+
+    if(!("speechSynthesis" in window))
+        return;
+
+    window.speechSynthesis.cancel();
+
+    const utterance =
+        new SpeechSynthesisUtterance(text);
+
+    utterance.lang="fa-IR";
+
+    utterance.rate=.9;
+
+    utterance.pitch=1;
+
+    utterance.volume=1;
+
+    window.speechSynthesis.speak(
+        utterance
+    );
+}
+
+
+/* =========================================================
+   UI
+========================================================= */
+
+function updateVoice(text){
+
+    voiceStatus.innerText=text;
+}
+
+
+function showAIMessage(text){
+
+    document.getElementById(
+        "aiMessage"
+    ).innerHTML=text;
+}
+
+
+function showToast(text){
+
+    const toast=
+        document.getElementById("toast");
+
+    toast.innerText=text;
+
+    toast.classList.add("show");
+
+    setTimeout(
+        ()=>toast.classList.remove("show"),
+        3000
+    );
+}
+
+
+/* =========================================================
+   DELETE
+========================================================= */
+
+function clearAll(){
+
+    if(!transactions.length){
+
+        speak("اطلاعاتی برای حذف وجود ندارد.");
+
+        return;
+    }
+
+    if(
+        confirm(
+            "آیا مطمئن هستید تمام اطلاعات مالی حذف شود؟"
+        )
+    ){
+
+        transactions=[];
+
+        saveData();
+
+        speak(
+            "تمام اطلاعات مالی پاک شد."
+        );
+
+        showAIMessage(
+            "🗑️ تمام اطلاعات حذف شد."
+        );
+    }
+}
+
+
+/* =========================================================
+   START
+========================================================= */
+
+render();
+
+</script>
+
+</body>
+</html>
