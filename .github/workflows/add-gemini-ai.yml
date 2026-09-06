@@ -1,0 +1,50 @@
+name: Add Gemini AI to Pouya
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add Gemini integration
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          key = os.environ.get('GEMINI_API_KEY', '')
+          if not key:
+              raise SystemExit('GEMINI_API_KEY repository secret is missing')
+
+          if '/* POUYA_GEMINI_CONFIG */' not in s:
+              config = f'''\n/* POUYA_GEMINI_CONFIG */\nconst GEMINI_API_KEY = {key!r};\nconst GEMINI_MODEL = "gemini-2.5-flash";\n\nasync function askGemini(userText) {{\n    const totals = getTotals();\n    const recent = transactions.slice(0, 10).map(t =>\n        `${{t.type === "income" ? "درآمد" : "هزینه"}}: ${{t.desc}} - ${{t.amount.toLocaleString("fa-IR")}} تومان`\n    ).join("\\n");\n\n    const prompt = `تو «پویا» مدیر مالی هوشمند این برنامه هستی. فارسی و کوتاه و دوستانه جواب بده.\nاطلاعات مالی فعلی:\nدرآمد کل: ${{totals.income.toLocaleString("fa-IR")}} تومان\nهزینه کل: ${{totals.expense.toLocaleString("fa-IR")}} تومان\nموجودی: ${{totals.balance.toLocaleString("fa-IR")}} تومان\nتراکنش‌های اخیر:\n${{recent || "بدون تراکنش"}}\n\nپیام کاربر: ${{userText}}`;\n\n    try {{\n        const response = await fetch(\n            `https://generativelanguage.googleapis.com/v1beta/models/${{GEMINI_MODEL}}:generateContent`,\n            {{\n                method: "POST",\n                headers: {{\n                    "Content-Type": "application/json",\n                    "x-goog-api-key": GEMINI_API_KEY\n                }},\n                body: JSON.stringify({{ contents: [{{ parts: [{{ text: prompt }}] }}] }})\n            }}\n        );\n        const data = await response.json();\n        if(!response.ok) throw new Error(data?.error?.message || "Gemini API error");\n        const answer = data?.candidates?.[0]?.content?.parts?.[0]?.text;\n        if(!answer) throw new Error("پاسخ خالی از Gemini");\n        showAIMessage("🤖 " + escapeHTML(answer).replace(/\\n/g, "<br>"));\n        speak(answer);\n        updateVoice("🤖 پویا پاسخ داد");\n    }} catch(error) {{\n        console.error("Gemini error:", error);\n        showToast("⚠️ اتصال به Gemini برقرار نشد");\n        updateVoice("⚠️ خطا در اتصال به هوش مصنوعی");\n    }}\n}}\n'''
+              s = s.replace('<script>', '<script>' + config, 1)
+
+          old = '''    /* Unknown */\n\n    speak(\n        "متوجه منظورت نشدم. اگر درباره دخل و خرج است، دوباره به زبان ساده بگو."\n    );'''
+          new = '''    /* Gemini AI fallback */\n    updateVoice("🤖 در حال فکر کردن...");\n    askGemini(text);'''
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif 'askGemini(text);' not in s:
+              raise SystemExit('Unknown-command block not found')
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Add Gemini AI integration to Pouya"
+          git push
