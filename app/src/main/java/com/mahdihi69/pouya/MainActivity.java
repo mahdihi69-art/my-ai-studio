@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
@@ -33,6 +34,8 @@ public class MainActivity extends Activity {
     private WebView webView;
     private SpeechRecognizer speechRecognizer;
     private TextToSpeech textToSpeech;
+    private boolean ttsReady = false;
+    private String pendingSpeech = null;
     private static final int MIC_REQUEST = 10;
     private static final String PREFS = "pouya_settings";
     private static final String KEY_GEMINI = "gemini_api_key";
@@ -40,8 +43,10 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         webView = new WebView(this);
         setContentView(webView);
+
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -49,6 +54,9 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setAllowContentAccess(true);
         s.setAllowFileAccess(true);
+        s.setBuiltInZoomControls(false);
+        s.setDisplayZoomControls(false);
+
         webView.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
@@ -61,13 +69,24 @@ public class MainActivity extends Activity {
             }
         });
         webView.addJavascriptInterface(new VoiceBridge(), "AndroidVoice");
+
         textToSpeech = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
                 int result = textToSpeech.setLanguage(new Locale("fa", "IR"));
-                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) textToSpeech.setLanguage(new Locale("fa"));
-                textToSpeech.setSpeechRate(0.9f);
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    result = textToSpeech.setLanguage(new Locale("fa"));
+                }
+                textToSpeech.setSpeechRate(0.92f);
+                textToSpeech.setPitch(1.0f);
+                ttsReady = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED;
+                if (ttsReady && pendingSpeech != null) {
+                    String text = pendingSpeech;
+                    pendingSpeech = null;
+                    speakNative(text);
+                }
             }
         });
+
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
             speechRecognizer.setRecognitionListener(new RecognitionListener() {
@@ -94,13 +113,17 @@ public class MainActivity extends Activity {
                 @Override public void onEvent(int eventType, Bundle params) {}
             });
         }
-        if (android.os.Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_REQUEST);
+
+        if (android.os.Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_REQUEST);
+        }
         webView.loadUrl("https://mahdihi69-art.github.io/my-ai-studio/");
     }
 
     private void installNativeVoiceBridge() {
         webView.evaluateJavascript("(function(){" +
-                "window.speak=function(text){if(window.AndroidVoice){AndroidVoice.speak(String(text));}else if('speechSynthesis' in window){speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(text);u.lang='fa-IR';u.rate=.9;speechSynthesis.speak(u);}};" +
+                "window.speak=function(text){if(window.AndroidVoice){AndroidVoice.speak(String(text));}" +
+                "else if('speechSynthesis' in window){speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(String(text));u.lang='fa-IR';u.rate=.9;u.onend=function(){};speechSynthesis.speak(u);}};" +
                 "window.toggleVoice=function(){if(window.AndroidVoice){AndroidVoice.toggleVoice();}else{showToast('🎤 تشخیص صدا در دسترس نیست');}};" +
                 "})();", null);
     }
@@ -110,16 +133,18 @@ public class MainActivity extends Activity {
     }
 
     private String getGeminiKey() {
-        return getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_GEMINI, "").trim();
+        String saved = getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_GEMINI, "").trim();
+        if (!saved.isEmpty()) return saved;
+        return BuildConfig.GEMINI_API_KEY == null ? "" : BuildConfig.GEMINI_API_KEY.trim();
     }
 
     private void handleVoiceWithGemini(String text) {
         String key = getGeminiKey();
         if (key.isEmpty()) {
-            js("showToast('🔑 برای فرمان صوتی هوشمند، کلید Gemini API را وارد کنید.'); AndroidVoice.requestGeminiKey();");
+            js("showToast('🔑 کلید Gemini تنظیم نشده است'); AndroidVoice.requestGeminiKey();");
             return;
         }
-        js("updateVoice('🧠 Gemini در حال فهم فرمان شماست...');");
+        js("updateVoice('🧠 در حال فهم فرمان شما...');");
         network.execute(() -> {
             try {
                 String prompt = "تو مغز صوتی اپلیکیشن مدیریت مالی فارسی به نام پویا هستی. فرمان کاربر را دقیق تحلیل کن و فقط JSON معتبر برگردان، بدون markdown. schema: {intent:'EXPENSE|INCOME|BALANCE|REPORT|CHAT', description:string, amount:number, note:string, reply:string}. مبلغ فقط عدد صحیح تومان باشد. اگر مبلغ مشخص نیست amount=0. اگر کاربر فقط سوال عمومی پرسید intent=CHAT و پاسخ کوتاه و فارسی در reply بده. اگر کاربر درباره موجودی/گزارش مالی پرسید intent مناسب را بده. فرمان کاربر: " + text;
@@ -131,13 +156,14 @@ public class MainActivity extends Activity {
                 content.put("parts", parts);
                 contents.put(content);
                 body.put("contents", contents);
-                URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent");
+
+                URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
-                conn.setConnectTimeout(15000);
+                conn.setConnectTimeout(10000);
                 conn.setReadTimeout(30000);
                 conn.setDoOutput(true);
-                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 conn.setRequestProperty("x-goog-api-key", key);
                 byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
                 try (OutputStream os = conn.getOutputStream()) { os.write(data); }
@@ -146,7 +172,7 @@ public class MainActivity extends Activity {
                 String response = readAll(stream);
                 conn.disconnect();
                 if (code < 200 || code >= 300) {
-                    js("showToast(" + JSONObject.quote("❌ خطای Gemini API: " + code) + "); updateVoice('⚠️ اتصال به Gemini ناموفق بود');");
+                    js("showToast(" + JSONObject.quote("❌ خطای Gemini: " + code) + "); updateVoice('⚠️ Gemini پاسخ نداد');");
                     return;
                 }
                 JSONObject root = new JSONObject(response);
@@ -155,7 +181,7 @@ public class MainActivity extends Activity {
                 JSONObject ai = new JSONObject(raw);
                 applyGeminiIntent(ai);
             } catch (Exception e) {
-                js("showToast(" + JSONObject.quote("❌ اتصال Gemini برقرار نشد") + "); updateVoice('⚠️ خطای اتصال به Gemini');");
+                js("showToast('❌ اتصال یا پردازش Gemini ناموفق بود'); updateVoice('⚠️ خطای هوش مصنوعی');");
             }
         });
     }
@@ -168,19 +194,33 @@ public class MainActivity extends Activity {
             String note = ai.optString("note", "").trim();
             String reply = ai.optString("reply", "انجام شد.").trim();
             if ("EXPENSE".equals(intent) && amount > 0) {
-                js("addTransaction('expense'," + JSONObject.quote(desc.isEmpty()?"هزینه":desc) + "," + amount + "," + JSONObject.quote(note) + "); showAIMessage(" + JSONObject.quote("💸 " + reply) + "); speak(" + JSONObject.quote(reply) + "); updateVoice('✅ فرمان انجام شد');");
+                js("addTransaction('expense'," + JSONObject.quote(desc.isEmpty()?"هزینه":desc) + "," + amount + "," + JSONObject.quote(note) + "); showAIMessage(" + JSONObject.quote("💸 " + reply) + "); speak(" + JSONObject.quote(reply) + "); updateVoice('✅ هزینه ثبت شد');");
             } else if ("INCOME".equals(intent) && amount > 0) {
-                js("addTransaction('income'," + JSONObject.quote(desc.isEmpty()?"درآمد":desc) + "," + amount + "," + JSONObject.quote(note) + "); showAIMessage(" + JSONObject.quote("💰 " + reply) + "); speak(" + JSONObject.quote(reply) + "); updateVoice('✅ فرمان انجام شد');");
+                js("addTransaction('income'," + JSONObject.quote(desc.isEmpty()?"درآمد":desc) + "," + amount + "," + JSONObject.quote(note) + "); showAIMessage(" + JSONObject.quote("💰 " + reply) + "); speak(" + JSONObject.quote(reply) + "); updateVoice('✅ درآمد ثبت شد');");
             } else if ("BALANCE".equals(intent)) {
                 js("(function(){var t=getTotals(); var r='موجودی شما ' + t.balance.toLocaleString('fa-IR') + ' تومان است.'; showAIMessage('💳 '+r); speak(r); updateVoice('✅ پاسخ آماده شد');})();");
             } else if ("REPORT".equals(intent)) {
-                js("dailyReport(); updateVoice('📊 گزارش آماده شد');");
+                js("dailyReport(); speak('گزارش امروز آماده شد'); updateVoice('📊 گزارش آماده شد');");
             } else {
-                js("showAIMessage(" + JSONObject.quote(reply) + "); speak(" + JSONObject.quote(reply) + "); updateVoice('✅ پاسخ Gemini آماده شد');");
+                js("showAIMessage(" + JSONObject.quote(reply) + "); speak(" + JSONObject.quote(reply) + "); updateVoice('✅ پاسخ آماده شد');");
             }
         } catch (Exception e) {
             js("showToast('⚠️ پاسخ Gemini قابل پردازش نبود');");
         }
+    }
+
+    private void speakNative(String text) {
+        if (text == null || text.trim().isEmpty()) return;
+        if (!ttsReady || textToSpeech == null) {
+            pendingSpeech = text;
+            return;
+        }
+        try {
+            AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+            if (am != null) am.requestAudioFocus(focus -> {}, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK);
+            textToSpeech.stop();
+            textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, "pouya_voice");
+        } catch (Exception ignored) {}
     }
 
     private String readAll(InputStream input) throws Exception {
@@ -204,36 +244,39 @@ public class MainActivity extends Activity {
                     js("showToast('❌ موتور تشخیص گفتار گوشی در دسترس نیست.');");
                     return;
                 }
-                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fa-IR");
-                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "fa-IR");
-                intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
-                speechRecognizer.startListening(intent);
-            });
-        }
-        @JavascriptInterface public void speak(String text) {
-            runOnUiThread(() -> {
-                if (textToSpeech != null) {
-                    textToSpeech.stop();
-                    textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, "pouya");
+                try {
+                    speechRecognizer.cancel();
+                    Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fa-IR");
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "fa-IR");
+                    intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
+                    intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+                    speechRecognizer.startListening(intent);
+                } catch (Exception e) {
+                    js("showToast('⚠️ شروع تشخیص صدا ناموفق بود');");
                 }
             });
         }
+
+        @JavascriptInterface public void speak(String text) {
+            runOnUiThread(() -> speakNative(text));
+        }
+
         @JavascriptInterface public void requestGeminiKey() {
             runOnUiThread(() -> {
                 final android.widget.EditText input = new android.widget.EditText(MainActivity.this);
                 input.setSingleLine(true);
-                input.setHint("AIza...");
+                input.setHint("کلید Gemini API");
                 new android.app.AlertDialog.Builder(MainActivity.this)
                         .setTitle("اتصال به Gemini")
                         .setMessage("کلید Gemini API را وارد کنید. کلید فقط روی همین گوشی ذخیره می‌شود.")
                         .setView(input)
-                        .setPositiveButton("ذخیره و اتصال", (d, w) -> {
+                        .setPositiveButton("ذخیره", (d, w) -> {
                             String key = input.getText().toString().trim();
                             if (key.isEmpty()) { js("showToast('⚠️ کلید وارد نشد');"); return; }
                             getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_GEMINI, key).apply();
-                            js("showToast('✅ Gemini متصل شد؛ دوباره روی میکروفون بزنید.');");
+                            js("showToast('✅ Gemini آماده شد؛ دوباره روی میکروفون بزنید.');");
                         })
                         .setNegativeButton("لغو", null)
                         .show();
