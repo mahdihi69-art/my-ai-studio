@@ -15,23 +15,33 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-
+import org.json.JSONArray;
 import org.json.JSONObject;
-
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
     private WebView webView;
     private SpeechRecognizer speechRecognizer;
     private TextToSpeech textToSpeech;
     private static final int MIC_REQUEST = 10;
+    private static final String PREFS = "pouya_settings";
+    private static final String KEY_GEMINI = "gemini_api_key";
+    private final ExecutorService network = Executors.newSingleThreadExecutor();
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         webView = new WebView(this);
         setContentView(webView);
-
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -39,32 +49,25 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setAllowContentAccess(true);
         s.setAllowFileAccess(true);
-
         webView.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 installNativeVoiceBridge();
             }
         });
-
         webView.setWebChromeClient(new WebChromeClient() {
             @Override public void onPermissionRequest(final PermissionRequest request) {
                 runOnUiThread(() -> request.grant(request.getResources()));
             }
         });
-
         webView.addJavascriptInterface(new VoiceBridge(), "AndroidVoice");
-
         textToSpeech = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
                 int result = textToSpeech.setLanguage(new Locale("fa", "IR"));
-                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    textToSpeech.setLanguage(new Locale("fa"));
-                }
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) textToSpeech.setLanguage(new Locale("fa"));
                 textToSpeech.setSpeechRate(0.9f);
             }
         });
-
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
             speechRecognizer.setRecognitionListener(new RecognitionListener() {
@@ -83,17 +86,15 @@ public class MainActivity extends Activity {
                     ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                     if (matches != null && !matches.isEmpty()) {
                         String text = matches.get(0).trim();
-                        js("updateVoice(" + JSONObject.quote("🗣️ " + text) + "); processVoice(" + JSONObject.quote(text) + ");");
+                        js("updateVoice(" + JSONObject.quote("🗣️ " + text) + ");");
+                        handleVoiceWithGemini(text);
                     }
                 }
                 @Override public void onPartialResults(Bundle partialResults) {}
                 @Override public void onEvent(int eventType, Bundle params) {}
             });
         }
-
-        if (android.os.Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
-            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_REQUEST);
-
+        if (android.os.Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_REQUEST);
         webView.loadUrl("https://mahdihi69-art.github.io/my-ai-studio/");
     }
 
@@ -106,6 +107,90 @@ public class MainActivity extends Activity {
 
     private void js(String script) {
         runOnUiThread(() -> webView.evaluateJavascript("try{" + script + "}catch(e){}", null));
+    }
+
+    private String getGeminiKey() {
+        return getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_GEMINI, "").trim();
+    }
+
+    private void handleVoiceWithGemini(String text) {
+        String key = getGeminiKey();
+        if (key.isEmpty()) {
+            js("showToast('🔑 برای فرمان صوتی هوشمند، کلید Gemini API را وارد کنید.'); AndroidVoice.requestGeminiKey();");
+            return;
+        }
+        js("updateVoice('🧠 Gemini در حال فهم فرمان شماست...');");
+        network.execute(() -> {
+            try {
+                String prompt = "تو مغز صوتی اپلیکیشن مدیریت مالی فارسی به نام پویا هستی. فرمان کاربر را دقیق تحلیل کن و فقط JSON معتبر برگردان، بدون markdown. schema: {intent:'EXPENSE|INCOME|BALANCE|REPORT|CHAT', description:string, amount:number, note:string, reply:string}. مبلغ فقط عدد صحیح تومان باشد. اگر مبلغ مشخص نیست amount=0. اگر کاربر فقط سوال عمومی پرسید intent=CHAT و پاسخ کوتاه و فارسی در reply بده. اگر کاربر درباره موجودی/گزارش مالی پرسید intent مناسب را بده. فرمان کاربر: " + text;
+                JSONObject body = new JSONObject();
+                JSONArray contents = new JSONArray();
+                JSONObject content = new JSONObject();
+                JSONArray parts = new JSONArray();
+                parts.put(new JSONObject().put("text", prompt));
+                content.put("parts", parts);
+                contents.put(content);
+                body.put("contents", contents);
+                URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(30000);
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("x-goog-api-key", key);
+                byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
+                try (OutputStream os = conn.getOutputStream()) { os.write(data); }
+                int code = conn.getResponseCode();
+                InputStream stream = code >= 200 && code < 300 ? conn.getInputStream() : conn.getErrorStream();
+                String response = readAll(stream);
+                conn.disconnect();
+                if (code < 200 || code >= 300) {
+                    js("showToast(" + JSONObject.quote("❌ خطای Gemini API: " + code) + "); updateVoice('⚠️ اتصال به Gemini ناموفق بود');");
+                    return;
+                }
+                JSONObject root = new JSONObject(response);
+                String raw = root.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text").trim();
+                raw = raw.replace("```json", "").replace("```", "").trim();
+                JSONObject ai = new JSONObject(raw);
+                applyGeminiIntent(ai);
+            } catch (Exception e) {
+                js("showToast(" + JSONObject.quote("❌ اتصال Gemini برقرار نشد") + "); updateVoice('⚠️ خطای اتصال به Gemini');");
+            }
+        });
+    }
+
+    private void applyGeminiIntent(JSONObject ai) {
+        try {
+            String intent = ai.optString("intent", "CHAT");
+            String desc = ai.optString("description", "هزینه").trim();
+            long amount = ai.optLong("amount", 0);
+            String note = ai.optString("note", "").trim();
+            String reply = ai.optString("reply", "انجام شد.").trim();
+            if ("EXPENSE".equals(intent) && amount > 0) {
+                js("addTransaction('expense'," + JSONObject.quote(desc.isEmpty()?"هزینه":desc) + "," + amount + "," + JSONObject.quote(note) + "); showAIMessage(" + JSONObject.quote("💸 " + reply) + "); speak(" + JSONObject.quote(reply) + "); updateVoice('✅ فرمان انجام شد');");
+            } else if ("INCOME".equals(intent) && amount > 0) {
+                js("addTransaction('income'," + JSONObject.quote(desc.isEmpty()?"درآمد":desc) + "," + amount + "," + JSONObject.quote(note) + "); showAIMessage(" + JSONObject.quote("💰 " + reply) + "); speak(" + JSONObject.quote(reply) + "); updateVoice('✅ فرمان انجام شد');");
+            } else if ("BALANCE".equals(intent)) {
+                js("(function(){var t=getTotals(); var r='موجودی شما ' + t.balance.toLocaleString('fa-IR') + ' تومان است.'; showAIMessage('💳 '+r); speak(r); updateVoice('✅ پاسخ آماده شد');})();");
+            } else if ("REPORT".equals(intent)) {
+                js("dailyReport(); updateVoice('📊 گزارش آماده شد');");
+            } else {
+                js("showAIMessage(" + JSONObject.quote(reply) + "); speak(" + JSONObject.quote(reply) + "); updateVoice('✅ پاسخ Gemini آماده شد');");
+            }
+        } catch (Exception e) {
+            js("showToast('⚠️ پاسخ Gemini قابل پردازش نبود');");
+        }
+    }
+
+    private String readAll(InputStream input) throws Exception {
+        if (input == null) return "";
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = br.readLine()) != null) sb.append(line);
+        }
+        return sb.toString();
     }
 
     private class VoiceBridge {
@@ -127,13 +212,31 @@ public class MainActivity extends Activity {
                 speechRecognizer.startListening(intent);
             });
         }
-
         @JavascriptInterface public void speak(String text) {
             runOnUiThread(() -> {
                 if (textToSpeech != null) {
                     textToSpeech.stop();
                     textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, "pouya");
                 }
+            });
+        }
+        @JavascriptInterface public void requestGeminiKey() {
+            runOnUiThread(() -> {
+                final android.widget.EditText input = new android.widget.EditText(MainActivity.this);
+                input.setSingleLine(true);
+                input.setHint("AIza...");
+                new android.app.AlertDialog.Builder(MainActivity.this)
+                        .setTitle("اتصال به Gemini")
+                        .setMessage("کلید Gemini API را وارد کنید. کلید فقط روی همین گوشی ذخیره می‌شود.")
+                        .setView(input)
+                        .setPositiveButton("ذخیره و اتصال", (d, w) -> {
+                            String key = input.getText().toString().trim();
+                            if (key.isEmpty()) { js("showToast('⚠️ کلید وارد نشد');"); return; }
+                            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_GEMINI, key).apply();
+                            js("showToast('✅ Gemini متصل شد؛ دوباره روی میکروفون بزنید.');");
+                        })
+                        .setNegativeButton("لغو", null)
+                        .show();
             });
         }
     }
@@ -145,6 +248,7 @@ public class MainActivity extends Activity {
     @Override protected void onDestroy() {
         if (speechRecognizer != null) { speechRecognizer.destroy(); speechRecognizer = null; }
         if (textToSpeech != null) { textToSpeech.stop(); textToSpeech.shutdown(); textToSpeech = null; }
+        network.shutdownNow();
         super.onDestroy();
     }
 }
