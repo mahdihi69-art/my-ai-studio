@@ -10,6 +10,7 @@ import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -35,297 +36,157 @@ import java.util.regex.Pattern;
 public class MainActivity extends Activity {
     private WebView webView;
     private SpeechRecognizer speechRecognizer;
-    private SpeechRecognizer onlineSpeechRecognizer;
-    private TextToSpeech textToSpeech;
+    private TextToSpeech tts;
     private boolean ttsReady = false;
-    private boolean usingOnDeviceVoice = false;
+    private boolean usingOnDevice = false;
+    private boolean liveVoice = false;
+    private boolean speaking = false;
     private String pendingSpeech;
     private static final int MIC_REQUEST = 10;
     private static final String PREFS = "pouya_settings";
     private static final String KEY_GEMINI = "gemini_api_key";
     private final ExecutorService network = Executors.newSingleThreadExecutor();
 
-    @Override protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+    @Override protected void onCreate(Bundle b) {
+        super.onCreate(b);
         webView = new WebView(this);
         setContentView(webView);
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
-        s.setDatabaseEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
-        s.setAllowContentAccess(true);
-        s.setAllowFileAccess(true);
         webView.setWebViewClient(new WebViewClient() {
-            @Override public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                installNativeVoiceBridge();
-                installQuickActions();
-            }
+            @Override public void onPageFinished(WebView v, String u) { installBridge(); installQuickActions(); }
         });
         webView.setWebChromeClient(new WebChromeClient() {
-            @Override public void onPermissionRequest(final PermissionRequest request) {
-                runOnUiThread(() -> request.grant(request.getResources()));
-            }
+            @Override public void onPermissionRequest(PermissionRequest r) { runOnUiThread(() -> r.grant(r.getResources())); }
         });
         webView.addJavascriptInterface(new VoiceBridge(), "AndroidVoice");
         initTts();
-        initVoiceRecognizer();
-        if (android.os.Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+        initRecognizer();
+        if (android.os.Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_REQUEST);
-        }
         webView.loadUrl("https://mahdihi69-art.github.io/my-ai-studio/");
     }
 
     private void initTts() {
-        textToSpeech = new TextToSpeech(this, status -> {
-            if (status == TextToSpeech.SUCCESS) {
-                int result = textToSpeech.setLanguage(new Locale("fa", "IR"));
-                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) result = textToSpeech.setLanguage(new Locale("fa"));
-                textToSpeech.setSpeechRate(0.92f);
-                ttsReady = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED;
-                if (ttsReady && pendingSpeech != null) { String t = pendingSpeech; pendingSpeech = null; speakNative(t); }
-            }
+        tts = new TextToSpeech(this, status -> {
+            if (status != TextToSpeech.SUCCESS) return;
+            int r = tts.setLanguage(new Locale("fa", "IR"));
+            if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) r = tts.setLanguage(new Locale("fa"));
+            tts.setSpeechRate(0.92f);
+            tts.setPitch(1.0f);
+            tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                @Override public void onStart(String id) { speaking = true; }
+                @Override public void onDone(String id) { runOnUiThread(() -> { speaking = false; if (liveVoice) startListening(); }); }
+                @Override public void onError(String id) { runOnUiThread(() -> { speaking = false; if (liveVoice) startListening(); }); }
+            });
+            ttsReady = r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED;
+            if (!ttsReady) js("showToast('🔊 صدای فارسی روی گوشی نصب نیست؛ Voice data فارسی را نصب کنید.');");
+            if (pendingSpeech != null) { String x = pendingSpeech; pendingSpeech = null; speakNative(x); }
         });
     }
 
-    private void initVoiceRecognizer() {
+    private void initRecognizer() {
         if (!SpeechRecognizer.isRecognitionAvailable(this)) return;
         try {
             if (android.os.Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(this)) {
-                speechRecognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(this);
-                usingOnDeviceVoice = true;
-            } else {
-                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
-                usingOnDeviceVoice = false;
-            }
-            setRecognitionListener(speechRecognizer);
-        } catch (Exception e) {
-            usingOnDeviceVoice = false;
-            try { speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this); setRecognitionListener(speechRecognizer); } catch (Exception ignored) {}
-        }
+                speechRecognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(this); usingOnDevice = true;
+            } else { speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this); usingOnDevice = false; }
+            speechRecognizer.setRecognitionListener(new RecognitionListener() {
+                @Override public void onReadyForSpeech(Bundle b) { js("updateVoice(" + JSONObject.quote(usingOnDevice ? "🔒 آفلاین؛ پویا گوش می‌دهد..." : "🎙️ پویا گوش می‌دهد...") + ");"); }
+                @Override public void onBeginningOfSpeech() { js("updateVoice('🗣️ دارم گوش می‌دهم...');"); }
+                @Override public void onRmsChanged(float r) {}
+                @Override public void onBufferReceived(byte[] b) {}
+                @Override public void onEndOfSpeech() { js("updateVoice('🧠 دارم فکر می‌کنم...');"); }
+                @Override public void onResults(Bundle r) { ArrayList<String> m=r.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION); if(m!=null&&!m.isEmpty()) processVoice(m.get(0)); else if(liveVoice) startListening(); }
+                @Override public void onError(int e) { js("updateVoice('⚠️ صدای شما دریافت نشد');"); if(liveVoice) startListening(); }
+                @Override public void onPartialResults(Bundle b) {}
+                @Override public void onEvent(int e, Bundle b) {}
+            });
+        } catch(Exception e){ speechRecognizer=null; }
     }
 
-    private void setRecognitionListener(SpeechRecognizer recognizer) {
-        recognizer.setRecognitionListener(new RecognitionListener() {
-            @Override public void onReadyForSpeech(Bundle params) { js("updateVoice(" + JSONObject.quote(usingOnDeviceVoice ? "🔒 آفلاین: پویا گوش می‌دهد..." : "👂 پویا گوش می‌دهد...") + ");"); }
-            @Override public void onBeginningOfSpeech() { js("updateVoice('🗣️ در حال شنیدن...');"); }
-            @Override public void onRmsChanged(float rmsdB) {}
-            @Override public void onBufferReceived(byte[] buffer) {}
-            @Override public void onEndOfSpeech() { js("updateVoice('⏳ در حال پردازش...');"); }
-            @Override public void onError(int error) {
-                if (usingOnDeviceVoice && shouldFallbackToOnline(error)) {
-                    switchToOnlineRecognizer();
-                    js("showToast('🌐 تشخیص آفلاین فارسی روی این گوشی در دسترس نیست؛ حالت آنلاین فعال شد.');");
-                    return;
-                }
-                String msg = "⚠️ خطا در تشخیص صدا";
-                if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) msg = "🎤 صدایی دریافت نشد";
-                if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) msg = "🎤 اجازه میکروفون را فعال کنید";
-                js("updateVoice(" + JSONObject.quote(msg) + ");");
-            }
-            @Override public void onResults(Bundle results) {
-                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                if (matches == null || matches.isEmpty()) return;
-                String text = matches.get(0).trim();
-                js("updateVoice(" + JSONObject.quote((usingOnDeviceVoice ? "🔒 آفلاین: " : "🗣️ ") + text) + ");");
-                if (!handleLocalVoiceCommand(text)) handleVoiceWithGemini(text);
-            }
-            @Override public void onPartialResults(Bundle partialResults) {}
-            @Override public void onEvent(int eventType, Bundle params) {}
-        });
+    private void processVoice(String text){
+        text=normalize(text);
+        if(text.isEmpty()){if(liveVoice)startListening();return;}
+        js("updateVoice("+JSONObject.quote("🗣️ "+text)+");");
+        if(!handleLocalVoice(text)) askGemini(text);
     }
 
-    private boolean shouldFallbackToOnline(int error) {
-        return error == SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED || error == SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE || error == SpeechRecognizer.ERROR_SERVER_DISCONNECTED || error == SpeechRecognizer.ERROR_NETWORK || error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT;
+    private void startListening(){
+        if(!liveVoice||speaking||speechRecognizer==null)return;
+        runOnUiThread(()->{try{
+            speechRecognizer.cancel();
+            Intent i=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE,"fa-IR");
+            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,"fa-IR");
+            i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS,3);
+            i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS,true);
+            speechRecognizer.startListening(i);
+        }catch(Exception ignored){}});
     }
 
-    private void switchToOnlineRecognizer() {
-        if (onlineSpeechRecognizer == null) {
-            try { onlineSpeechRecognizer = SpeechRecognizer.createSpeechRecognizer(this); setOnlineListener(onlineSpeechRecognizer); } catch (Exception ignored) {}
-        }
-        if (onlineSpeechRecognizer != null) { speechRecognizer = onlineSpeechRecognizer; usingOnDeviceVoice = false; }
-    }
+    private void installBridge(){webView.evaluateJavascript("(function(){window.speak=function(t){AndroidVoice.speak(String(t));};window.toggleVoice=function(){AndroidVoice.toggleVoice();};})();",null);}
 
-    private void setOnlineListener(SpeechRecognizer recognizer) {
-        recognizer.setRecognitionListener(new RecognitionListener() {
-            @Override public void onReadyForSpeech(Bundle b) { js("updateVoice('🌐 آنلاین: پویا گوش می‌دهد...');"); }
-            @Override public void onBeginningOfSpeech() { js("updateVoice('🗣️ در حال شنیدن...');"); }
-            @Override public void onRmsChanged(float r) {}
-            @Override public void onBufferReceived(byte[] b) {}
-            @Override public void onEndOfSpeech() { js("updateVoice('⏳ در حال پردازش...');"); }
-            @Override public void onError(int e) { js("updateVoice('⚠️ تشخیص صدا ناموفق بود');"); }
-            @Override public void onResults(Bundle r) {
-                ArrayList<String> m = r.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                if (m != null && !m.isEmpty()) { String t = m.get(0).trim(); js("updateVoice(" + JSONObject.quote("🗣️ " + t) + ");"); if (!handleLocalVoiceCommand(t)) handleVoiceWithGemini(t); }
-            }
-            @Override public void onPartialResults(Bundle b) {}
-            @Override public void onEvent(int e, Bundle b) {}
-        });
-    }
+    private void installQuickActions(){String js="(function(){if(document.getElementById('pouyaNativeTools'))return;var b=document.createElement('div');b.id='pouyaNativeTools';b.innerHTML='<button onclick=quickBalance()>💳 موجودی</button><button onclick=dailyReport()>📊 گزارش امروز</button>';var c=document.querySelector('.container');if(c)c.insertBefore(b,c.children[2]);window.quickBalance=function(){var t=getTotals();var r='موجودی شما '+t.balance.toLocaleString('fa-IR')+' تومان است.';showAIMessage(r);speak(r);};})();";webView.evaluateJavascript(js,null);}
 
-    private void installNativeVoiceBridge() {
-        webView.evaluateJavascript("(function(){window.speak=function(text){if(window.AndroidVoice){AndroidVoice.speak(String(text));}else if('speechSynthesis' in window){speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(String(text));u.lang='fa-IR';u.rate=.9;speechSynthesis.speak(u);}};window.toggleVoice=function(){if(window.AndroidVoice){AndroidVoice.toggleVoice();}else{showToast('🎤 تشخیص صدا در دسترس نیست');}};})();", null);
-    }
+    private void js(String x){runOnUiThread(()->webView.evaluateJavascript("try{"+x+"}catch(e){}",null));}
+    private String key(){String k=getSharedPreferences(PREFS,MODE_PRIVATE).getString(KEY_GEMINI,"").trim();return !k.isEmpty()?k:(BuildConfig.GEMINI_API_KEY==null?"":BuildConfig.GEMINI_API_KEY.trim());}
 
-    private void installQuickActions() {
-        String js = "(function(){if(document.getElementById('pouyaNativeTools'))return;var s=document.createElement('style');s.id='pouyaNativeToolsStyle';s.innerHTML='#pouyaNativeTools{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:0 0 16px}.pqt{padding:12px;border-radius:15px;border:0;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.07);font-weight:700;font-size:13px}.pqt:active{transform:scale(.97)}';document.head.appendChild(s);var box=document.createElement('div');box.id='pouyaNativeTools';box.innerHTML='<button class=pqt onclick=quickExpense()>💸 هزینه سریع</button><button class=pqt onclick=quickIncome()>💰 درآمد سریع</button><button class=pqt onclick=dailyReport()>📊 گزارش امروز</button><button class=pqt onclick=quickBalance()>💳 موجودی</button>';var c=document.querySelector('.container');if(c)c.insertBefore(box,c.children[2]);window.quickExpense=function(){document.getElementById('typeInput').value='expense';document.getElementById('descInput').focus();showAIMessage('💸 عنوان و مبلغ هزینه را وارد کن یا با میکروفون بگو.');};window.quickIncome=function(){document.getElementById('typeInput').value='income';document.getElementById('descInput').focus();showAIMessage('💰 درآمد را وارد کن یا با میکروفون بگو.');};window.quickBalance=function(){var t=getTotals();var r='موجودی شما '+t.balance.toLocaleString('fa-IR')+' تومان است.';showAIMessage('💳 '+r);speak(r);};})();";
-        webView.evaluateJavascript(js, null);
-    }
-
-    private void js(String script) { runOnUiThread(() -> webView.evaluateJavascript("try{" + script + "}catch(e){}", null)); }
-
-    private String getGeminiKey() {
-        String saved = getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_GEMINI, "").trim();
-        if (!saved.isEmpty()) return saved;
-        return BuildConfig.GEMINI_API_KEY == null ? "" : BuildConfig.GEMINI_API_KEY.trim();
-    }
-
-    private boolean handleLocalVoiceCommand(String text) {
-        String t = normalize(text);
-        if (t.isEmpty()) return true;
-        Long amount = extractAmount(t);
-        if (t.contains("سلام") || t.contains("خوبی") || t.contains("چه خبر")) { reply("سلام! من پویا هستم. آماده‌ام به مدیریت دخل و خرجت کمک کنم."); return true; }
-        if (t.contains("کمک") || t.contains("دستورات") || t.contains("چه کارهایی")) { reply("می‌توانی بگویی هزینه ثبت کن، درآمد ثبت کن، موجودی، گزارش امروز، آخرین خرید یا هزینه این ماه."); return true; }
-        if (t.contains("موجودی") || t.contains("چقدر پول دارم") || t.contains("چقدر دارم") || t.contains("مانده")) { js("quickBalance();"); return true; }
-        if (t.contains("گزارش") || t.contains("چقدر خرج") || t.contains("چقدر هزینه") || t.contains("امروز چقدر")) { js("dailyReport(); updateVoice('📊 گزارش آماده شد');"); return true; }
-        if (t.contains("این ماه") && (t.contains("خرج") || t.contains("هزینه"))) { js("monthlyReport();"); return true; }
-        if (t.contains("آخرین خرید") || t.contains("آخرین هزینه") || t.contains("آخرین تراکنش")) { js("(function(){if(!transactions.length){speak('هنوز تراکنشی ثبت نشده است.');return;}var x=transactions[0];speak('آخرین تراکنش '+x.desc+' به مبلغ '+x.amount.toLocaleString('fa-IR')+' تومان بود.');})();"); return true; }
-        if (t.contains("حذف همه") || t.contains("پاک کردن همه") || t.contains("همه را پاک کن")) { js("clearAll();"); return true; }
-        boolean income = t.contains("حقوق گرفتم") || t.contains("درآمد") || t.contains("پول گرفتم") || t.contains("واریز شد") || t.contains("دریافت کردم");
-        boolean expense = t.contains("خرج کردم") || t.contains("خریدم") || t.contains("خرید کردم") || t.contains("هزینه کردم") || t.contains("پرداخت کردم") || t.contains("خرج شد");
-        if ((income || expense) && amount != null && amount > 0) {
-            String desc = income ? (t.contains("حقوق") ? "حقوق" : "درآمد") : extractDescription(t);
-            String type = income ? "income" : "expense";
-            js("addTransaction(" + JSONObject.quote(type) + "," + JSONObject.quote(desc) + "," + amount + ");showAIMessage(" + JSONObject.quote(income ? "💰 درآمد با موفقیت ثبت شد." : "💸 هزینه با موفقیت ثبت شد.") + ");speak(" + JSONObject.quote((income ? "درآمد " : "هزینه ") + amount + " تومان ثبت شد.") + ");updateVoice('✅ ثبت شد');");
-            return true;
-        }
+    private boolean handleLocalVoice(String t){
+        Long n=amount(t);
+        if(t.contains("سلام")||t.contains("خوبی")){answer("سلام! من پویا هستم. بگو چه کاری انجام بدهم.");return true;}
+        if(t.contains("موجودی")||t.contains("چقدر پول دارم")||t.contains("مانده")){js("quickBalance();");return true;}
+        if(t.contains("گزارش امروز")||t.equals("گزارش")){js("dailyReport();");answer("گزارش امروز آماده شد.");return true;}
+        if(t.contains("این ماه")&&(t.contains("هزینه")||t.contains("خرج"))){js("monthlyReport();");answer("گزارش هزینه‌های این ماه آماده شد.");return true;}
+        if(t.contains("آخرین خرید")||t.contains("آخرین هزینه")){js("(function(){if(!transactions.length){speak('هنوز تراکنشی ثبت نشده است.');return;}var x=transactions[0];speak('آخرین تراکنش '+x.desc+' به مبلغ '+x.amount.toLocaleString('fa-IR')+' تومان بود.');})();");return true;}
+        boolean income=t.contains("درآمد")||t.contains("حقوق گرفتم")||t.contains("پول گرفتم")||t.contains("واریز شد");
+        boolean expense=t.contains("هزینه")||t.contains("خرج کردم")||t.contains("خریدم")||t.contains("خرید کردم")||t.contains("پرداخت کردم");
+        if(n!=null&&n>0&&(income||expense)){String type=income?"income":"expense";String d=income?"درآمد":description(t);String sp=(income?"درآمد ":"هزینه ")+n+" تومان ثبت شد.";js("addTransaction("+JSONObject.quote(type)+","+JSONObject.quote(d)+","+n+");showAIMessage("+JSONObject.quote(sp)+");speak("+JSONObject.quote(sp)+");updateVoice('✅ ثبت شد');");return true;}
         return false;
     }
 
-    private void reply(String text) { js("showAIMessage(" + JSONObject.quote(text) + ");speak(" + JSONObject.quote(text) + ");updateVoice('✅ پاسخ آماده شد');"); }
+    private void answer(String s){js("showAIMessage("+JSONObject.quote(s)+");speak("+JSONObject.quote(s)+");updateVoice('🔊 پویا پاسخ داد');");}
 
-    private String normalize(String text) {
-        return text.replace('ي','ی').replace('ى','ی').replace('ك','ک').replace('ة','ه').replace('ۀ','ه').replace('‌',' ').replaceAll("\\s+", " ").trim();
-    }
-
-    private Long extractAmount(String text) {
-        String n = text.replace('،', ',').replace("٬", "").replace("تومان", "").replace("ریال", "");
-        Matcher m = Pattern.compile("(\\d[\\d,]*)").matcher(n);
-        long value = 0; boolean found = false;
-        while (m.find()) { String raw = m.group(1).replace(",", ""); try { value = Long.parseLong(raw); found = true; } catch (Exception ignored) {} }
-        if (found) {
-            if (n.contains("میلیون")) value *= 1000000L;
-            else if (n.contains("هزار")) value *= 1000L;
-            return value;
-        }
-        String[] units = {"صفر","یک","دو","سه","چهار","پنج","شش","هفت","هشت","نه","ده","بیست","سی","چهل","پنجاه","صد","دویست","سیصد","پانصد"};
-        long base = 0;
-        for (String u : units) if (n.contains(u)) { base = wordValue(u); break; }
-        if (base > 0 && n.contains("میلیون")) return base * 1000000L;
-        if (base > 0 && n.contains("هزار")) return base * 1000L;
-        return base > 0 ? base : null;
-    }
-
-    private long wordValue(String w) { switch(w) { case "یک":return 1; case "دو":return 2; case "سه":return 3; case "چهار":return 4; case "پنج":return 5; case "شش":return 6; case "هفت":return 7; case "هشت":return 8; case "نه":return 9; case "ده":return 10; case "بیست":return 20; case "سی":return 30; case "چهل":return 40; case "پنجاه":return 50; case "صد":return 100; case "دویست":return 200; case "سیصد":return 300; case "پانصد":return 500; default:return 0; } }
-
-    private String extractDescription(String text) {
-        return text.replaceAll("\\d[\\d,]*", "").replace("هزار", "").replace("میلیون", "").replace("تومان", "").replace("ریال", "").replace("خرج کردم", "").replace("هزینه کردم", "").replace("پرداخت کردم", "").replace("خرید کردم", "").replace("خریدم", "").replace("خرج شد", "").replace("برای", "").replace("بابت", "").trim();
-    }
-
-    private void handleVoiceWithGemini(String text) {
-        String key = getGeminiKey();
-        if (key.isEmpty()) { js("showToast('🔑 کلید Gemini تنظیم نشده است');AndroidVoice.requestGeminiKey();"); return; }
-        js("updateVoice('🧠 در حال فهم فرمان شما...');");
-        network.execute(() -> {
-            try {
-                JSONObject body = new JSONObject();
-                JSONArray contents = new JSONArray();
-                JSONObject content = new JSONObject();
-                JSONArray parts = new JSONArray();
-                String prompt = "تو دستیار صوتی فارسی اپلیکیشن مدیر مالی پویا هستی. فرمان کاربر را تحلیل کن و فقط JSON معتبر بدون markdown برگردان. schema: {intent:'EXPENSE|INCOME|BALANCE|REPORT|CHAT',description:string,amount:number,note:string,reply:string}. amount عدد صحیح تومان باشد؛ اگر نامشخص است 0. فرمان: " + text;
-                parts.put(new JSONObject().put("text", prompt));
-                content.put("parts", parts); contents.put(content); body.put("contents", contents);
-                String[] models = {"gemini-3.5-flash-lite", "gemini-3.5-flash"};
-                String response = null; int lastCode = 0;
-                for (String model : models) {
-                    HttpURLConnection conn = null;
-                    try {
-                        URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent");
-                        conn = (HttpURLConnection) url.openConnection();
-                        conn.setRequestMethod("POST"); conn.setConnectTimeout(12000); conn.setReadTimeout(30000); conn.setDoOutput(true);
-                        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-                        conn.setRequestProperty("x-goog-api-key", key);
-                        byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
-                        try (OutputStream os = conn.getOutputStream()) { os.write(data); }
-                        lastCode = conn.getResponseCode();
-                        InputStream stream = lastCode >= 200 && lastCode < 300 ? conn.getInputStream() : conn.getErrorStream();
-                        String r = readAll(stream);
-                        if (lastCode >= 200 && lastCode < 300) { response = r; break; }
-                        if (lastCode != 400 && lastCode != 404 && lastCode != 429 && lastCode < 500) { response = r; break; }
-                    } finally { if (conn != null) conn.disconnect(); }
+    private void askGemini(String text){
+        String k=key(); if(k.isEmpty()){js("showToast('🔑 کلید Gemini تنظیم نشده است');AndroidVoice.requestGeminiKey();");return;}
+        js("updateVoice('🧠 پویا در حال فکر کردن...');");
+        network.execute(()->{
+            HttpURLConnection c=null;
+            try{
+                JSONObject body=new JSONObject();JSONArray contents=new JSONArray();JSONObject content=new JSONObject();JSONArray parts=new JSONArray();
+                String prompt="تو دستیار صوتی فارسی اپلیکیشن مدیر مالی پویا هستی. فرمان کاربر را بفهم. فقط JSON معتبر برگردان با ساختار {\"intent\":\"EXPENSE|INCOME|BALANCE|REPORT|CHAT\",\"description\":\"\",\"amount\":0,\"reply\":\"\"}. مبلغ به تومان و عدد صحیح باشد. reply کوتاه و طبیعی فارسی باشد. فرمان: "+text;
+                parts.put(new JSONObject().put("text",prompt));content.put("role","user");content.put("parts",parts);contents.put(content);body.put("contents",contents);
+                String[] models={"gemini-3.8-flash","gemini-3.7-flash","gemini-3.5-flash-lite"};String raw=null;int code=0;String err="";
+                for(String model:models){
+                    c=(HttpURLConnection)new URL("https://generativelanguage.googleapis.com/v1beta/models/"+model+":generateContent").openConnection();
+                    c.setRequestMethod("POST");c.setConnectTimeout(15000);c.setReadTimeout(30000);c.setDoOutput(true);c.setRequestProperty("Content-Type","application/json");c.setRequestProperty("x-goog-api-key",k);
+                    try(OutputStream o=c.getOutputStream()){o.write(body.toString().getBytes(StandardCharsets.UTF_8));}
+                    code=c.getResponseCode();InputStream in=(code>=200&&code<300)?c.getInputStream():c.getErrorStream();err=readAll(in);c.disconnect();c=null;
+                    if(code>=200&&code<300){raw=err;break;} if(code==401||code==403)break;
                 }
-                if (response == null) { js("showToast(" + JSONObject.quote("❌ Gemini خطا داد: HTTP " + lastCode) + ");updateVoice('⚠️ Gemini در دسترس نیست');"); return; }
-                JSONObject root = new JSONObject(response);
-                String raw = root.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text").trim();
-                raw = raw.replace("```json", "").replace("```", "").trim();
-                applyGeminiIntent(new JSONObject(raw));
-            } catch (Exception e) { js("showToast('❌ پاسخ Gemini قابل پردازش نبود');updateVoice('⚠️ خطای هوش مصنوعی');"); }
+                if(raw==null){String safe="Gemini HTTP "+code;try{JSONObject er=new JSONObject(err);JSONObject eo=er.optJSONObject("error");if(eo!=null)safe+=" : "+eo.optString("message","خطای API");}catch(Exception ignored){}js("showToast("+JSONObject.quote("❌ "+safe)+");updateVoice('⚠️ خطای اتصال به Gemini');");return;}
+                JSONObject root=new JSONObject(raw);String out=root.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text").trim();out=out.replace("```json","").replace("```","").trim();applyAi(new JSONObject(out));
+            }catch(Exception e){js("showToast('❌ پاسخ هوش مصنوعی قابل پردازش نبود');updateVoice('⚠️ خطای پاسخ Gemini');");}finally{if(c!=null)c.disconnect();}
         });
     }
 
-    private void applyGeminiIntent(JSONObject ai) {
-        String intent = ai.optString("intent", "CHAT");
-        String desc = ai.optString("description", "هزینه").trim();
-        long amount = ai.optLong("amount", 0);
-        String note = ai.optString("note", "").trim();
-        String reply = ai.optString("reply", "انجام شد.").trim();
-        if ("EXPENSE".equals(intent) && amount > 0) js("addTransaction('expense'," + JSONObject.quote(desc.isEmpty()?"هزینه":desc) + "," + amount + "," + JSONObject.quote(note) + ");showAIMessage(" + JSONObject.quote("💸 " + reply) + ");speak(" + JSONObject.quote(reply) + ");updateVoice('✅ هزینه ثبت شد');");
-        else if ("INCOME".equals(intent) && amount > 0) js("addTransaction('income'," + JSONObject.quote(desc.isEmpty()?"درآمد":desc) + "," + amount + "," + JSONObject.quote(note) + ");showAIMessage(" + JSONObject.quote("💰 " + reply) + ");speak(" + JSONObject.quote(reply) + ");updateVoice('✅ درآمد ثبت شد');");
-        else if ("BALANCE".equals(intent)) js("quickBalance();");
-        else if ("REPORT".equals(intent)) js("dailyReport();speak('گزارش امروز آماده شد');");
-        else reply(reply);
-    }
+    private void applyAi(JSONObject a){String in=a.optString("intent","CHAT"),d=a.optString("description","هزینه"),r=a.optString("reply","انجام شد.");long n=a.optLong("amount",0);if("EXPENSE".equals(in)&&n>0)js("addTransaction('expense',"+JSONObject.quote(d)+","+n+");showAIMessage("+JSONObject.quote(r)+");speak("+JSONObject.quote(r)+");updateVoice('✅ هزینه ثبت شد');");else if("INCOME".equals(in)&&n>0)js("addTransaction('income',"+JSONObject.quote(d)+","+n+");showAIMessage("+JSONObject.quote(r)+");speak("+JSONObject.quote(r)+");updateVoice('✅ درآمد ثبت شد');");else if("BALANCE".equals(in))js("quickBalance();");else if("REPORT".equals(in)){js("dailyReport();");answer(r);}else answer(r);}
 
-    private void speakNative(String text) {
-        if (text == null || text.trim().isEmpty()) return;
-        if (!ttsReady || textToSpeech == null) { pendingSpeech = text; return; }
-        try { AudioManager am = (AudioManager)getSystemService(AUDIO_SERVICE); if (am != null) am.requestAudioFocus(focus -> {}, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK); textToSpeech.stop(); textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, "pouya_voice"); } catch (Exception ignored) {}
-    }
+    private void speakNative(String text){if(text==null||text.trim().isEmpty())return;if(!ttsReady||tts==null){pendingSpeech=text;return;}try{AudioManager am=(AudioManager)getSystemService(AUDIO_SERVICE);if(am!=null)am.requestAudioFocus(f->{},AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK);tts.stop();tts.speak(text,TextToSpeech.QUEUE_FLUSH,null,"pouya_live_voice");}catch(Exception ignored){}}
+    private Long amount(String t){Matcher m=Pattern.compile("(\\d[\\d,]*)").matcher(t.replace("٬","").replace("تومان",""));long v=0;boolean f=false;while(m.find()){try{v=Long.parseLong(m.group(1).replace(",",""));f=true;}catch(Exception ignored){}}if(f){if(t.contains("میلیون"))v*=1000000L;else if(t.contains("هزار"))v*=1000L;return v;}String[] w={"یک","دو","سه","چهار","پنج","شش","هفت","هشت","نه","ده","بیست","سی","چهل","پنجاه","صد","دویست","سیصد","پانصد"};for(String x:w)if(t.contains(x)){long z=word(x);if(t.contains("میلیون"))z*=1000000L;else if(t.contains("هزار"))z*=1000L;return z;}return null;}
+    private long word(String x){switch(x){case"یک":return 1;case"دو":return 2;case"سه":return 3;case"چهار":return 4;case"پنج":return 5;case"شش":return 6;case"هفت":return 7;case"هشت":return 8;case"نه":return 9;case"ده":return 10;case"بیست":return 20;case"سی":return 30;case"چهل":return 40;case"پنجاه":return 50;case"صد":return 100;case"دویست":return 200;case"سیصد":return 300;case"پانصد":return 500;default:return 0;}}
+    private String description(String t){return t.replaceAll("\\d[\\d,]*"," ").replace("تومان","").replace("هزار","").replace("میلیون","").replace("خرج کردم","").replace("هزینه کردم","").replace("پرداخت کردم","").replace("خرید کردم","").replace("خریدم","").trim();}
+    private String normalize(String t){return t.replace('ي','ی').replace('ى','ی').replace('ك','ک').replace('‌',' ').replaceAll("\\s+"," ").trim();}
+    private String readAll(InputStream in)throws Exception{if(in==null)return"";StringBuilder s=new StringBuilder();try(BufferedReader r=new BufferedReader(new InputStreamReader(in,StandardCharsets.UTF_8))){String l;while((l=r.readLine())!=null)s.append(l);}return s.toString();}
 
-    private String readAll(InputStream input) throws Exception {
-        if (input == null) return ""; StringBuilder sb = new StringBuilder();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) { String line; while ((line = br.readLine()) != null) sb.append(line); }
-        return sb.toString();
+    private class VoiceBridge{
+        @JavascriptInterface public void toggleVoice(){runOnUiThread(()->{if(android.os.Build.VERSION.SDK_INT>=23&&checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},MIC_REQUEST);return;}if(speechRecognizer==null){js("showToast('❌ تشخیص صدا در دسترس نیست');");return;}liveVoice=!liveVoice;if(liveVoice){js("updateVoice('🟢 گفت‌وگوی زنده روشن است؛ صحبت کن...');showToast('🎙️ حالت گفت‌وگوی زنده فعال شد');");startListening();}else{speechRecognizer.cancel();js("updateVoice('⏹️ گفت‌وگوی زنده خاموش شد');showToast('گفت‌وگوی زنده متوقف شد');");}});}
+        @JavascriptInterface public void speak(String text){runOnUiThread(()->speakNative(text));}
+        @JavascriptInterface public void requestGeminiKey(){runOnUiThread(()->{final android.widget.EditText in=new android.widget.EditText(MainActivity.this);in.setSingleLine(true);in.setHint("کلید Gemini API");new android.app.AlertDialog.Builder(MainActivity.this).setTitle("اتصال Gemini").setMessage("کلید روی همین گوشی ذخیره می‌شود.").setView(in).setPositiveButton("ذخیره",(d,w)->{String k=in.getText().toString().trim();if(!k.isEmpty())getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString(KEY_GEMINI,k).apply();}).setNegativeButton("لغو",null).show();});}
     }
-
-    private class VoiceBridge {
-        @JavascriptInterface public void toggleVoice() {
-            runOnUiThread(() -> {
-                if (android.os.Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_REQUEST); return; }
-                if (speechRecognizer == null) { js("showToast('❌ موتور تشخیص گفتار در دسترس نیست.');"); return; }
-                try {
-                    speechRecognizer.cancel();
-                    Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fa-IR");
-                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "fa-IR");
-                    intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
-                    intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
-                    speechRecognizer.startListening(intent);
-                } catch (Exception e) { js("showToast('⚠️ شروع تشخیص صدا ناموفق بود');"); }
-            });
-        }
-        @JavascriptInterface public void speak(String text) { runOnUiThread(() -> speakNative(text)); }
-        @JavascriptInterface public void requestGeminiKey() {
-            runOnUiThread(() -> {
-                final android.widget.EditText input = new android.widget.EditText(MainActivity.this); input.setSingleLine(true); input.setHint("کلید Gemini API");
-                new android.app.AlertDialog.Builder(MainActivity.this).setTitle("اتصال به Gemini").setMessage("کلید Gemini API فقط روی همین گوشی ذخیره می‌شود.").setView(input).setPositiveButton("ذخیره", (d,w) -> { String key=input.getText().toString().trim(); if(key.isEmpty()){js("showToast('⚠️ کلید وارد نشد');");return;} getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString(KEY_GEMINI,key).apply(); js("showToast('✅ Gemini آماده شد؛ دوباره فرمان را بگو.');"); }).setNegativeButton("لغو",null).show();
-            });
-        }
-    }
-
-    @Override public void onBackPressed() { if (webView.canGoBack()) webView.goBack(); else super.onBackPressed(); }
-    @Override protected void onDestroy() { if(speechRecognizer!=null){speechRecognizer.destroy();speechRecognizer=null;} if(onlineSpeechRecognizer!=null && onlineSpeechRecognizer!=speechRecognizer){onlineSpeechRecognizer.destroy();onlineSpeechRecognizer=null;} if(textToSpeech!=null){textToSpeech.stop();textToSpeech.shutdown();textToSpeech=null;} network.shutdownNow(); super.onDestroy(); }
+    @Override public void onBackPressed(){if(webView.canGoBack())webView.goBack();else super.onBackPressed();}
+    @Override protected void onDestroy(){liveVoice=false;if(speechRecognizer!=null){speechRecognizer.destroy();speechRecognizer=null;}if(tts!=null){tts.stop();tts.shutdown();tts=null;}network.shutdownNow();super.onDestroy();}
 }
