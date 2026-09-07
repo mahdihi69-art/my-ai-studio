@@ -11,12 +11,19 @@ android {
         applicationId "com.mahdihi69.pouya"
         minSdk 23
         targetSdk 35
-        versionCode 4
-        versionName '1.4'
-        buildConfigField 'String', 'GEMINI_API_KEY', '"' + escapedGeminiKey + '"'
+        versionCode 5
+        versionName '1.5'
+        buildConfigField 'String', 'GEMINI_API_KEY', '\"' + escapedGeminiKey + '\"'
     }
 
-    buildFeatures {
-        buildConfig true
+    buildFeatures { buildConfig true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
+}
+
+dependencies {
+    implementation 'com.alphacephei:vosk-android:0.3.75@aar'
+    implementation 'net.java.dev.jna:jna:5.18.1@aar'
 }
