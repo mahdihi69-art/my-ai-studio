@@ -32,11 +32,6 @@ jobs:
           test -n "$GEMINI_API_KEY"
           echo "Gemini API key is available to the build"
 
-      - name: Fix Gemini model endpoint
-        run: |
-          sed -i 's/gemini-2\.5-flash/gemini-3\.5-flash/g' app/src/main/java/com/mahdihi69/pouya/MainActivity.java
-          grep -n "gemini-3.5-flash" app/src/main/java/com/mahdihi69/pouya/MainActivity.java
-
       - name: Build debug APK
         run: gradle :app:assembleDebug --no-daemon
 
@@ -58,5 +53,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: pouya-finance-debug-apk-v1.3-gemini35
+          name: pouya-finance-debug-apk-v1.4
           path: app/build/outputs/apk/debug/app-debug.apk
