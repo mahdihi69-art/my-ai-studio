@@ -1,29 +1,22 @@
 plugins { id 'com.android.application' }
 
-def geminiKey = System.getenv("GEMINI_API_KEY") ?: ""
-def escapedGeminiKey = geminiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+def geminiKey = System.getenv('GEMINI_API_KEY') ?: ''
+def escapedGeminiKey = geminiKey.replace('\\', '\\\\').replace('"', '\\"')
 
 android {
-    namespace 'com.mahdihi69.pouya'
+    namespace 'com.mahdihi69.dastansaz'
     compileSdk 35
-
     defaultConfig {
-        applicationId "com.mahdihi69.pouya"
+        applicationId 'com.mahdihi69.dastansaz'
         minSdk 23
         targetSdk 35
-        versionCode 5
-        versionName '1.5'
+        versionCode 1
+        versionName '1.0'
         buildConfigField 'String', 'GEMINI_API_KEY', '\"' + escapedGeminiKey + '\"'
     }
-
     buildFeatures { buildConfig true }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-}
-
-dependencies {
-    implementation 'com.alphacephei:vosk-android:0.3.75@aar'
-    implementation 'net.java.dev.jna:jna:5.18.1@aar'
 }
