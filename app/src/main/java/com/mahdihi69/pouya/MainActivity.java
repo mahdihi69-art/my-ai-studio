@@ -41,6 +41,8 @@ public class MainActivity extends Activity {
     private boolean usingOnDevice = false;
     private boolean liveVoice = false;
     private boolean speaking = false;
+    private OfflinePersianVoice offlineVoice;
+    private boolean offlineVoiceActive = false;
     private String pendingSpeech;
     private static final int MIC_REQUEST = 10;
     private static final String PREFS = "pouya_settings";
@@ -64,6 +66,11 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new VoiceBridge(), "AndroidVoice");
         initTts();
         initRecognizer();
+        offlineVoice = new OfflinePersianVoice(this, new OfflinePersianVoice.Callback() {
+            @Override public void status(String text) { js("updateVoice(" + JSONObject.quote(text) + ");"); }
+            @Override public void result(String text) { processVoice(text); }
+            @Override public void error(String text) { offlineVoiceActive = false; js("updateVoice(" + JSONObject.quote("⚠️ " + text) + ");showToast(" + JSONObject.quote(text) + ");"); }
+        });
         if (android.os.Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_REQUEST);
         webView.loadUrl("https://mahdihi69-art.github.io/my-ai-studio/");
@@ -124,6 +131,7 @@ public class MainActivity extends Activity {
             i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,"fa-IR");
             i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS,3);
             i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS,true);
+            i.putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE,true);
             speechRecognizer.startListening(i);
         }catch(Exception ignored){}});
     }
@@ -202,10 +210,23 @@ public class MainActivity extends Activity {
     private String readAll(InputStream in)throws Exception{if(in==null)return"";StringBuilder s=new StringBuilder();try(BufferedReader r=new BufferedReader(new InputStreamReader(in,StandardCharsets.UTF_8))){String l;while((l=r.readLine())!=null)s.append(l);}return s.toString();}
 
     private class VoiceBridge{
-        @JavascriptInterface public void toggleVoice(){runOnUiThread(()->{if(android.os.Build.VERSION.SDK_INT>=23&&checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},MIC_REQUEST);return;}if(speechRecognizer==null){js("showToast('❌ تشخیص صدا در دسترس نیست');");return;}liveVoice=!liveVoice;if(liveVoice){js("updateVoice('🟢 گفت‌وگوی زنده روشن است؛ صحبت کن...');showToast('🎙️ حالت گفت‌وگوی زنده فعال شد');");startListening();}else{speechRecognizer.cancel();js("updateVoice('⏹️ گفت‌وگوی زنده خاموش شد');showToast('گفت‌وگوی زنده متوقف شد');");}});}
+        @JavascriptInterface public void toggleVoice(){runOnUiThread(()->{
+            if(android.os.Build.VERSION.SDK_INT>=23&&checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},MIC_REQUEST);return;}
+            liveVoice=!liveVoice;
+            if(liveVoice){
+                offlineVoiceActive=true;
+                js("updateVoice('🔒 حالت صوتی داخلی؛ بدون Gemini و بدون اینترنت...');showToast('🎙️ فرمان صوتی داخلی فعال شد');");
+                if(offlineVoice!=null) offlineVoice.start();
+            }else{
+                offlineVoiceActive=false;
+                if(offlineVoice!=null) offlineVoice.stop();
+                if(speechRecognizer!=null) speechRecognizer.cancel();
+                js("updateVoice('⏹️ فرمان صوتی خاموش شد');showToast('فرمان صوتی متوقف شد');");
+            }
+        });}
         @JavascriptInterface public void speak(String text){runOnUiThread(()->speakNative(text));}
         @JavascriptInterface public void requestGeminiKey(){runOnUiThread(()->{final android.widget.EditText in=new android.widget.EditText(MainActivity.this);in.setSingleLine(true);in.setHint("کلید Gemini API");new android.app.AlertDialog.Builder(MainActivity.this).setTitle("اتصال Gemini").setMessage("کلید روی همین گوشی ذخیره می‌شود.").setView(in).setPositiveButton("ذخیره",(d,w)->{String k=in.getText().toString().trim();if(!k.isEmpty())getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString(KEY_GEMINI,k).apply();}).setNegativeButton("لغو",null).show();});}
     }
     @Override public void onBackPressed(){if(webView.canGoBack())webView.goBack();else super.onBackPressed();}
-    @Override protected void onDestroy(){liveVoice=false;if(speechRecognizer!=null){speechRecognizer.destroy();speechRecognizer=null;}if(tts!=null){tts.stop();tts.shutdown();tts=null;}network.shutdownNow();super.onDestroy();}
+    @Override protected void onDestroy(){liveVoice=false;offlineVoiceActive=false;if(offlineVoice!=null){offlineVoice.release();offlineVoice=null;}if(speechRecognizer!=null){speechRecognizer.destroy();speechRecognizer=null;}if(tts!=null){tts.stop();tts.shutdown();tts=null;}network.shutdownNow();super.onDestroy();}
 }
