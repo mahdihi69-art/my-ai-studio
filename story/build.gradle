@@ -1,7 +1,7 @@
 plugins { id 'com.android.application' }
 
-def geminiKey = System.getenv("GEMINI_API_KEY") ?: ""
-def escapedGeminiKey = geminiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+def qwenKey = System.getenv("QWEN_API_KEY") ?: ""
+def escapedQwenKey = qwenKey.replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace 'com.mahdihi69.story'
@@ -10,9 +10,9 @@ android {
         applicationId "com.mahdihi69.story"
         minSdk 23
         targetSdk 35
-        versionCode 1
-        versionName '1.0'
-        buildConfigField 'String', 'GEMINI_API_KEY', '\"' + escapedGeminiKey + '\"'
+        versionCode 2
+        versionName '1.1'
+        buildConfigField 'String', 'QWEN_API_KEY', '\"' + escapedQwenKey + '\"'
     }
     buildFeatures { buildConfig true }
     compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
