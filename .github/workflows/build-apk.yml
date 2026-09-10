@@ -86,5 +86,5 @@ jobs:
           gh release create "$TAG" \
             app/build/outputs/apk/debug/app-debug.apk \
             story/build/outputs/apk/debug/story-debug.apk \
-            --title "Android APKs $TAG" \
+            --title "Android APKs $TAG - Public Download" \
             --generate-notes
