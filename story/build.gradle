@@ -1,0 +1,19 @@
+plugins { id 'com.android.application' }
+
+def geminiKey = System.getenv("GEMINI_API_KEY") ?: ""
+def escapedGeminiKey = geminiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+
+android {
+    namespace 'com.mahdihi69.story'
+    compileSdk 35
+    defaultConfig {
+        applicationId "com.mahdihi69.story"
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+        buildConfigField 'String', 'GEMINI_API_KEY', '\"' + escapedGeminiKey + '\"'
+    }
+    buildFeatures { buildConfig true }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+}
