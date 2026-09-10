@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APKs
 
 on:
   push:
@@ -27,31 +27,30 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Verify Gemini secret is available
+      - name: Verify Gemini secret
+        run: test -n "$GEMINI_API_KEY"
+
+      - name: Build both APKs
+        run: gradle :app:assembleDebug :story:assembleDebug --no-daemon
+
+      - name: Validate APKs
         run: |
-          test -n "$GEMINI_API_KEY"
-          echo "Gemini API key is available to the build"
+          set -e
+          for APK in app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk; do
+            test -s "$APK"
+            unzip -t "$APK" >/dev/null
+            sha256sum "$APK"
+            ls -lh "$APK"
+          done
 
-      - name: Build debug APK
-        run: gradle :app:assembleDebug --no-daemon
-
-      - name: Validate APK before upload
-        run: |
-          APK="app/build/outputs/apk/debug/app-debug.apk"
-          test -s "$APK"
-          unzip -t "$APK" >/dev/null
-          test -n "$(unzip -p "$APK" classes*.dex 2>/dev/null | strings | grep -m1 'MainActivity' || true)"
-          if command -v apksigner >/dev/null 2>&1; then
-            apksigner verify --verbose "$APK"
-          fi
-          if command -v aapt >/dev/null 2>&1; then
-            aapt dump badging "$APK" | head -20
-          fi
-          sha256sum "$APK"
-          ls -lh "$APK"
-
-      - name: Upload APK
+      - name: Upload Pouya APK
         uses: actions/upload-artifact@v4
         with:
-          name: pouya-finance-debug-apk-v1.4
+          name: pouya-finance-debug-apk-v2
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload Story Maker APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-maker-debug-apk-v1
+          path: story/build/outputs/apk/debug/story-debug.apk
