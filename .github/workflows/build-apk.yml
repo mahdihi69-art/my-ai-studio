@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,7 +28,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Verify Gemini secret
+      - name: Verify existing Pouya secret
         run: test -n "$GEMINI_API_KEY"
 
       - name: Build both APKs
@@ -52,5 +53,5 @@ jobs:
       - name: Upload Story Maker APK
         uses: actions/upload-artifact@v4
         with:
-          name: story-maker-debug-apk-v1
+          name: story-maker-debug-apk-v2
           path: story/build/outputs/apk/debug/story-debug.apk
