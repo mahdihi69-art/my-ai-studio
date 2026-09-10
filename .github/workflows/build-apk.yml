@@ -28,6 +28,27 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Prepare Story Maker neural voice engine
+        shell: bash
+        run: |
+          set -e
+          mkdir -p story/libs story/src/main/assets/tts
+          curl -L --fail --retry 3 -o story/libs/sherpa-onnx-1.13.7.aar \
+            https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.7/sherpa-onnx-1.13.7.aar
+          for MODEL in \
+            vits-piper-fa_IR-amir-medium \
+            vits-piper-fa_IR-ganji_adabi-medium \
+            vits-piper-fa_IR-gyro-medium \
+            vits-piper-fa_IR-reza_ibrahim-medium; do
+            curl -L --fail --retry 3 -o /tmp/$MODEL.tar.bz2 \
+              https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/$MODEL.tar.bz2
+            tar -xjf /tmp/$MODEL.tar.bz2 -C story/src/main/assets/tts
+            rm -f /tmp/$MODEL.tar.bz2
+          done
+          find story/src/main/assets/tts -maxdepth 2 -type f | head -50
+          du -sh story/src/main/assets/tts
+          ls -lh story/libs/sherpa-onnx-1.13.7.aar
+
       - name: Verify existing Pouya secret
         run: test -n "$GEMINI_API_KEY"
 
@@ -53,5 +74,5 @@ jobs:
       - name: Upload Story Maker APK
         uses: actions/upload-artifact@v4
         with:
-          name: story-maker-debug-apk-v2
+          name: story-maker-debug-apk-v3-neural-persian-tts
           path: story/build/outputs/apk/debug/story-debug.apk
