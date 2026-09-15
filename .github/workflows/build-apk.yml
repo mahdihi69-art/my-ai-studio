@@ -28,15 +28,19 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build both APKs (lightweight Story Maker)
-        run: gradle :app:assembleDebug :story:assembleDebug --no-daemon
+      - name: Build both APKs
+        run: gradle :app:assembleDebug :story:assembleDebug --no-daemon --stacktrace
 
-      - name: Validate APKs
+      - name: Validate APKs strictly
         run: |
-          set -e
+          set -euo pipefail
           for APK in app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk; do
             test -s "$APK"
+            test "$(stat -c%s "$APK")" -gt 20000
             unzip -t "$APK" >/dev/null
+            unzip -l "$APK" | grep -q 'AndroidManifest.xml'
+            unzip -l "$APK" | grep -q 'classes.dex'
+            echo "VERIFIED APK: $APK"
             sha256sum "$APK"
             ls -lh "$APK"
           done
@@ -44,23 +48,25 @@ jobs:
       - name: Upload Pouya APK
         uses: actions/upload-artifact@v4
         with:
-          name: pouya-finance-debug-apk
+          name: pouya-finance-debug-apk-verified
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
       - name: Upload Story Maker APK
         uses: actions/upload-artifact@v4
         with:
-          name: story-maker-debug-apk-light
+          name: story-maker-debug-apk-verified
           path: story/build/outputs/apk/debug/story-debug.apk
+          if-no-files-found: error
 
-      - name: Publish public GitHub Release
+      - name: Publish verified public GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -e
-          TAG="v1.3.${{ github.run_number }}"
+          set -euo pipefail
+          TAG="v1.4.${{ github.run_number }}"
           gh release create "$TAG" \
             app/build/outputs/apk/debug/app-debug.apk \
             story/build/outputs/apk/debug/story-debug.apk \
-            --title "Android APKs $TAG - Lightweight" \
+            --title "Android APKs $TAG - Verified" \
             --generate-notes
