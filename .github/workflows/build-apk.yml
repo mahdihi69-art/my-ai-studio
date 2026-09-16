@@ -25,6 +25,10 @@ jobs:
           cache: gradle
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Fix Story Maker compile imports
+        run: |
+          set -euo pipefail
+          sed -i 's/void setBg(Uri u)/void setBg(android.net.Uri u)/g' story/src/main/java/com/mahdihi69/story/MainActivity.java
       - name: Build both APKs
         run: gradle :app:assembleDebug :story:assembleDebug --no-daemon --stacktrace
       - name: Validate APKs strictly
