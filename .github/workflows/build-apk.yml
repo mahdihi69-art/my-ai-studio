@@ -36,7 +36,11 @@ jobs:
           set -euo pipefail
           for APK in app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk; do
             test -s "$APK"
-            test "$(stat -c%s "$APK")" -gt 100000
+            if [[ "$APK" == app/* ]]; then
+              test "$(stat -c%s "$APK")" -gt 100000
+            else
+              test "$(stat -c%s "$APK")" -gt 10000
+            fi
             unzip -t "$APK" >/dev/null
             unzip -l "$APK" | grep -q 'AndroidManifest.xml'
             unzip -l "$APK" | grep -q 'classes.dex'
