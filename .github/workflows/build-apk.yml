@@ -34,20 +34,25 @@ jobs:
       - name: Validate APKs strictly
         run: |
           set -euo pipefail
-          for APK in app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk; do
-            test -s "$APK"
-            if [[ "$APK" == app/* ]]; then
-              test "$(stat -c%s "$APK")" -gt 100000
-            else
-              test "$(stat -c%s "$APK")" -gt 10000
-            fi
-            unzip -t "$APK" >/dev/null
-            unzip -l "$APK" | grep -q 'AndroidManifest.xml'
-            unzip -l "$APK" | grep -q 'classes.dex'
-            echo "VERIFIED APK: $APK"
-            sha256sum "$APK"
-            ls -lh "$APK"
-          done
+          APP=app/build/outputs/apk/debug/app-debug.apk
+          STORY=story/build/outputs/apk/debug/story-debug.apk
+          test -s "$APP"
+          test -s "$STORY"
+          test "$(stat -c%s "$APP")" -gt 100000
+          test "$(stat -c%s "$STORY")" -gt 50000
+          unzip -t "$APP" >/dev/null
+          unzip -t "$STORY" >/dev/null
+          unzip -l "$APP" | grep -q 'AndroidManifest.xml'
+          unzip -l "$APP" | grep -q 'classes.dex'
+          unzip -l "$STORY" | grep -q 'AndroidManifest.xml'
+          unzip -l "$STORY" | grep -q 'classes.dex'
+          unzip -l "$STORY" | grep -q 'classes2.dex'
+          echo '--- APK sizes ---'
+          ls -lh "$APP" "$STORY"
+          echo '--- APK hashes ---'
+          sha256sum "$APP" "$STORY"
+          echo '--- Story APK contents ---'
+          unzip -l "$STORY"
       - name: Upload Pouya APK
         uses: actions/upload-artifact@v4
         with:
