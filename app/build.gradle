@@ -1,26 +1,21 @@
 plugins { id 'com.android.application' }
 
-def geminiKey = System.getenv("GEMINI_API_KEY") ?: ""
-def escapedGeminiKey = geminiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+def avalaiKey = System.getenv("AVALAI_API_KEY") ?: ""
+def escapedAvalaiKey = avalaiKey.replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace 'com.mahdihi69.pouya'
     compileSdk 35
-
     defaultConfig {
         applicationId "com.mahdihi69.pouya"
         minSdk 23
         targetSdk 35
-        versionCode 5
-        versionName '1.5'
-        buildConfigField 'String', 'GEMINI_API_KEY', '\"' + escapedGeminiKey + '\"'
+        versionCode 6
+        versionName '1.6'
+        buildConfigField 'String', 'AVALAI_API_KEY', '\"' + escapedAvalaiKey + '\"'
     }
-
     buildFeatures { buildConfig true }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
 }
 
 dependencies {
