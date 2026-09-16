@@ -1,7 +1,9 @@
 plugins { id 'com.android.application' }
 
 def qwenKey = System.getenv("QWEN_API_KEY") ?: ""
+def avalaiKey = System.getenv("AVALAI_API_KEY") ?: ""
 def escapedQwenKey = qwenKey.replace("\\", "\\\\").replace("\"", "\\\"")
+def escapedAvalaiKey = avalaiKey.replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace 'com.mahdihi69.story'
@@ -10,9 +12,10 @@ android {
         applicationId "com.mahdihi69.story"
         minSdk 23
         targetSdk 35
-        versionCode 5
-        versionName '1.3.7'
+        versionCode 6
+        versionName '1.4.0'
         buildConfigField 'String', 'QWEN_API_KEY', '\"' + escapedQwenKey + '\"'
+        buildConfigField 'String', 'AVALAI_API_KEY', '\"' + escapedAvalaiKey + '\"'
     }
     buildFeatures { buildConfig true }
     compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
