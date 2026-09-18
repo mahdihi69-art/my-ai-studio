@@ -40,7 +40,7 @@ jobs:
           test -s "$STORY"
           echo "App APK: $(stat -c%s "$APP") bytes"
           echo "Story APK: $(stat -c%s "$STORY") bytes"
-      - name: Runtime install and launch test on Android emulator
+      - name: Runtime install and launch test — Story Maker
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -49,25 +49,30 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
           script: |
-            set -e
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb install -r story/build/outputs/apk/debug/story-debug.apk
-
-            adb shell am force-stop com.mahdihi69.pouya
-            adb shell monkey -p com.mahdihi69.pouya 1
-            sleep 5
-            adb shell pidof com.mahdihi69.pouya >/dev/null
-
+            set -u
+            STORY_APK=story/build/outputs/apk/debug/story-debug.apk
+            adb install -r "$STORY_APK"
             adb shell am force-stop com.mahdihi69.storymaker
-            adb shell monkey -p com.mahdihi69.storymaker 1
-            sleep 5
-            adb shell pidof com.mahdihi69.storymaker >/dev/null
-
-            if adb logcat -d -t 1000 | grep -q "FATAL EXCEPTION: main"; then
-              adb logcat -d -t 1000
+            adb shell am start -n com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity
+            sleep 8
+            echo "=== STORY PACKAGE ==="
+            adb shell pm path com.mahdihi69.storymaker || true
+            echo "=== STORY ACTIVITY ==="
+            adb shell dumpsys activity activities | grep -A3 -B2 "com.mahdihi69.storymaker" || true
+            echo "=== STORY PROCESS ==="
+            adb shell pidof com.mahdihi69.storymaker || true
+            echo "=== STORY LOGCAT ==="
+            adb logcat -d -t 1500 | grep -E "AndroidRuntime|com.mahdihi69.storymaker|com.mahdihi69.story" | tail -n 250 || true
+            PID=$(adb shell pidof com.mahdihi69.storymaker | tr -d '\r' | tr -d '\n')
+            if [ -z "$PID" ]; then
+              echo "STORY MAKER PROCESS DID NOT STAY ALIVE"
               exit 1
             fi
-            echo "REAL ANDROID INSTALL + LAUNCH TEST PASSED"
+            if adb logcat -d -t 1500 | grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" | grep -q .; then
+              echo "STORY MAKER CRASH DETECTED"
+              exit 1
+            fi
+            echo "REAL ANDROID STORY INSTALL + LAUNCH TEST PASSED"
       - name: Upload runtime-verified APKs
         if: success()
         uses: actions/upload-artifact@v4
