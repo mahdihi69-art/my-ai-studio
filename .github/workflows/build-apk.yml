@@ -53,6 +53,30 @@ jobs:
           sha256sum "$APP" "$STORY"
           echo '--- Story APK contents ---'
           unzip -l "$STORY"
+      - name: Runtime smoke test Story Maker on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: Pixel_2
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          disable-animations: true
+          script: |
+            set -e
+            adb install -r story/build/outputs/apk/debug/story-debug.apk
+            adb shell am force-stop com.mahdihi69.storymaker3
+            adb shell monkey -p com.mahdihi69.storymaker3 1
+            sleep 5
+            if adb shell pidof com.mahdihi69.storymaker3 >/dev/null 2>&1; then
+              echo "Story Maker launched successfully"
+            else
+              echo "Story Maker process is not running"
+              adb logcat -d -t 500
+              exit 1
+            fi
+            adb logcat -d -t 500 | grep -E "FATAL EXCEPTION|com.mahdihi69.storymaker3" | tail -80 || true
+
       - name: Upload Pouya APK
         uses: actions/upload-artifact@v4
         with:
