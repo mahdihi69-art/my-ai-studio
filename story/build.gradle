@@ -2,8 +2,8 @@ plugins { id 'com.android.application' }
 
 def qwenKey = System.getenv("QWEN_API_KEY") ?: ""
 def avalaiKey = System.getenv("AVALAI_API_KEY") ?: ""
-def escapedQwenKey = qwenKey.replace("\\", "\\\\").replace(""", "\\"")
-def escapedAvalaiKey = avalaiKey.replace("\\", "\\\\").replace(""", "\\"")
+def escapedQwenKey = qwenKey.replace('\\', '\\\\').replace('"', '\\"')
+def escapedAvalaiKey = avalaiKey.replace('\\', '\\\\').replace('"', '\\"')
 
 android {
     namespace 'com.mahdihi69.story'
@@ -14,8 +14,8 @@ android {
         targetSdk 35
         versionCode 13
         versionName '1.8.3'
-        buildConfigField 'String', 'QWEN_API_KEY', '\"' + escapedQwenKey + '\"'
-        buildConfigField 'String', 'AVALAI_API_KEY', '\"' + escapedAvalaiKey + '\"'
+        buildConfigField 'String', 'QWEN_API_KEY', '"' + escapedQwenKey + '"'
+        buildConfigField 'String', 'AVALAI_API_KEY', '"' + escapedAvalaiKey + '"'
     }
     buildFeatures { buildConfig true }
     compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
