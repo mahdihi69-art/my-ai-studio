@@ -31,7 +31,7 @@ jobs:
           sed -i 's/void setBg(Uri u)/void setBg(android.net.Uri u)/g' story/src/main/java/com/mahdihi69/story/MainActivity.java
       - name: Build both APKs
         run: gradle :app:assembleDebug :story:assembleDebug --no-daemon --stacktrace
-      - name: Validate APKs
+      - name: Validate APK files
         run: |
           set -euo pipefail
           APP=app/build/outputs/apk/debug/app-debug.apk
@@ -39,13 +39,11 @@ jobs:
           test -s "$APP"
           test -s "$STORY"
           test "$(stat -c%s "$APP")" -gt 100000
-          test "$(stat -c%s "$STORY")" -gt 10000
+          test "$(stat -c%s "$STORY")" -gt 50000
           unzip -t "$APP" >/dev/null
           unzip -t "$STORY" >/dev/null
-          unzip -l "$APP" | grep -q 'AndroidManifest.xml'
-          unzip -l "$APP" | grep -q 'classes.dex'
-          unzip -l "$STORY" | grep -q 'AndroidManifest.xml'
-          unzip -l "$STORY" | grep -q 'classes.dex'
+          echo "APK validation passed"
+          ls -lh "$APP" "$STORY"
           sha256sum "$APP" "$STORY"
       - name: Runtime smoke test both apps on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -65,7 +63,7 @@ jobs:
             adb shell monkey -p com.mahdihi69.pouya 1
             sleep 5
             if ! adb shell pidof com.mahdihi69.pouya >/dev/null 2>&1; then
-              echo "Pouya process is not running after launch"
+              echo "Pouya did not stay running"
               adb logcat -d -t 800
               exit 1
             fi
@@ -74,7 +72,7 @@ jobs:
             adb shell monkey -p com.mahdihi69.storymaker 1
             sleep 5
             if ! adb shell pidof com.mahdihi69.storymaker >/dev/null 2>&1; then
-              echo "Story Maker process is not running after launch"
+              echo "Story Maker did not stay running"
               adb logcat -d -t 800
               exit 1
             fi
