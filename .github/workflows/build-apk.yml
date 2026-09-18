@@ -30,16 +30,19 @@ jobs:
           set -euo pipefail
           sed -i 's/void setBg(Uri u)/void setBg(android.net.Uri u)/g' story/src/main/java/com/mahdihi69/story/MainActivity.java
       - name: Build both APKs
-        run: gradle :app:assembleDebug :story:assembleDebug --no-daemon --stacktrace
+        run: gradle :app:assembleDebug :story:assembleDebug :builder:assembleDebug --no-daemon --stacktrace
       - name: Check APK outputs
         run: |
           set -euo pipefail
           APP=app/build/outputs/apk/debug/app-debug.apk
           STORY=story/build/outputs/apk/debug/story-debug.apk
+          BUILDER=builder/build/outputs/apk/debug/builder-debug.apk
           test -s "$APP"
           test -s "$STORY"
+          test -s "$BUILDER"
           echo "App APK: $(stat -c%s "$APP") bytes"
           echo "Story APK: $(stat -c%s "$STORY") bytes"
+          echo "Builder APK: $(stat -c%s "$BUILDER") bytes"
       - name: Runtime install and launch test — Story Maker
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -51,6 +54,8 @@ jobs:
           script: |
             set -u
             STORY_APK=story/build/outputs/apk/debug/story-debug.apk
+            BUILDER_APK=builder/build/outputs/apk/debug/builder-debug.apk
+            adb install -r "$BUILDER_APK"
             adb install -r "$STORY_APK"
             adb logcat -c
             adb shell am force-stop com.mahdihi69.storymaker3
@@ -73,7 +78,13 @@ jobs:
               echo "STORY MAKER CRASH DETECTED"
               exit 1
             fi
-            echo "REAL ANDROID STORY INSTALL + LAUNCH TEST PASSED"
+            adb shell am force-stop com.mahdihi69.builder
+            adb shell am start -n com.mahdihi69.builder/com.mahdihi69.builder.MainActivity
+            sleep 5
+            BPID=$(adb shell pidof com.mahdihi69.builder | tr -d "\r" | tr -d "\n")
+            if [ -z "$BPID" ]; then echo "PROGRAM BUILDER PROCESS DID NOT STAY ALIVE"; exit 1; fi
+            if adb logcat -d -t 1500 | grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder" | grep -q .; then echo "PROGRAM BUILDER CRASH DETECTED"; exit 1; fi
+            echo "REAL ANDROID STORY + PROGRAM BUILDER INSTALL AND LAUNCH TEST PASSED"
       - name: Upload runtime-verified APKs
         if: success()
         uses: actions/upload-artifact@v4
@@ -82,6 +93,7 @@ jobs:
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             story/build/outputs/apk/debug/story-debug.apk
+            builder/build/outputs/apk/debug/builder-debug.apk
           if-no-files-found: error
       - name: Publish runtime-verified release
         if: success()
@@ -89,4 +101,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v2.0.${{ github.run_number }}"
-          gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk --title "Android APKs $TAG - Runtime Verified" --generate-notes
+          gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk builder/build/outputs/apk/debug/builder-debug.apk --title "Android APKs $TAG - Runtime Verified" --generate-notes
