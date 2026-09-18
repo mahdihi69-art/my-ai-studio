@@ -2,8 +2,8 @@ plugins { id 'com.android.application' }
 
 def qwenKey = System.getenv("QWEN_API_KEY") ?: ""
 def avalaiKey = System.getenv("AVALAI_API_KEY") ?: ""
-def escapedQwenKey = qwenKey.replace("\\", "\\\\").replace(""", "\\"")
-def escapedAvalaiKey = avalaiKey.replace("\\", "\\\\").replace(""", "\\"")
+def escapedQwenKey = qwenKey.replace("\\", "\\\\").replace("\"", "\\\"")
+def escapedAvalaiKey = avalaiKey.replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace 'com.mahdihi69.story'
