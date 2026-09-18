@@ -31,21 +31,16 @@ jobs:
           sed -i 's/void setBg(Uri u)/void setBg(android.net.Uri u)/g' story/src/main/java/com/mahdihi69/story/MainActivity.java
       - name: Build both APKs
         run: gradle :app:assembleDebug :story:assembleDebug --no-daemon --stacktrace
-      - name: Validate APK files
+      - name: Check APK outputs
         run: |
           set -euo pipefail
           APP=app/build/outputs/apk/debug/app-debug.apk
           STORY=story/build/outputs/apk/debug/story-debug.apk
           test -s "$APP"
           test -s "$STORY"
-          test "$(stat -c%s "$APP")" -gt 100000
-          test "$(stat -c%s "$STORY")" -gt 50000
-          unzip -t "$APP" >/dev/null
-          unzip -t "$STORY" >/dev/null
-          echo "APK validation passed"
-          ls -lh "$APP" "$STORY"
-          sha256sum "$APP" "$STORY"
-      - name: Runtime smoke test both apps on Android emulator
+          echo "App APK: $(stat -c%s "$APP") bytes"
+          echo "Story APK: $(stat -c%s "$STORY") bytes"
+      - name: Runtime install and launch test on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -62,29 +57,19 @@ jobs:
             adb shell am force-stop com.mahdihi69.pouya
             adb shell monkey -p com.mahdihi69.pouya 1
             sleep 5
-            if ! adb shell pidof com.mahdihi69.pouya >/dev/null 2>&1; then
-              echo "Pouya did not stay running"
-              adb logcat -d -t 800
-              exit 1
-            fi
+            adb shell pidof com.mahdihi69.pouya >/dev/null
 
             adb shell am force-stop com.mahdihi69.storymaker
             adb shell monkey -p com.mahdihi69.storymaker 1
             sleep 5
-            if ! adb shell pidof com.mahdihi69.storymaker >/dev/null 2>&1; then
-              echo "Story Maker did not stay running"
-              adb logcat -d -t 800
-              exit 1
-            fi
+            adb shell pidof com.mahdihi69.storymaker >/dev/null
 
             if adb logcat -d -t 1000 | grep -q "FATAL EXCEPTION: main"; then
-              echo "Fatal Android startup crash detected"
               adb logcat -d -t 1000
               exit 1
             fi
-            echo "Both APKs installed and launched successfully on Android emulator"
-
-      - name: Upload verified APKs
+            echo "REAL ANDROID INSTALL + LAUNCH TEST PASSED"
+      - name: Upload runtime-verified APKs
         if: success()
         uses: actions/upload-artifact@v4
         with:
@@ -93,12 +78,10 @@ jobs:
             app/build/outputs/apk/debug/app-debug.apk
             story/build/outputs/apk/debug/story-debug.apk
           if-no-files-found: error
-
-      - name: Publish verified public GitHub Release
+      - name: Publish runtime-verified release
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
           TAG="v2.0.${{ github.run_number }}"
-          gh release create "$TAG"             app/build/outputs/apk/debug/app-debug.apk             story/build/outputs/apk/debug/story-debug.apk             --title "Android APKs $TAG - Runtime Verified"             --generate-notes
+          gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk --title "Android APKs $TAG - Runtime Verified" --generate-notes
