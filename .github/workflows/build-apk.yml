@@ -31,7 +31,7 @@ jobs:
           sed -i 's/void setBg(Uri u)/void setBg(android.net.Uri u)/g' story/src/main/java/com/mahdihi69/story/MainActivity.java
       - name: Build both APKs
         run: gradle :app:assembleDebug :story:assembleDebug --no-daemon --stacktrace
-      - name: Validate APKs strictly
+      - name: Validate APKs
         run: |
           set -euo pipefail
           APP=app/build/outputs/apk/debug/app-debug.apk
@@ -46,11 +46,8 @@ jobs:
           unzip -l "$APP" | grep -q 'classes.dex'
           unzip -l "$STORY" | grep -q 'AndroidManifest.xml'
           unzip -l "$STORY" | grep -q 'classes.dex'
-          echo '--- APK sizes ---'
-          ls -lh "$APP" "$STORY"
-          echo '--- APK hashes ---'
           sha256sum "$APP" "$STORY"
-      - name: Runtime smoke test Story Maker on Android emulator
+      - name: Runtime smoke test both apps on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -61,42 +58,49 @@ jobs:
           disable-animations: true
           script: |
             set -e
-            PKG=com.mahdihi69.storymaker
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb install -r story/build/outputs/apk/debug/story-debug.apk
-            adb shell am force-stop "$PKG"
-            adb shell monkey -p "$PKG" 1
+
+            adb shell am force-stop com.mahdihi69.pouya
+            adb shell monkey -p com.mahdihi69.pouya 1
             sleep 5
-            if ! adb shell pidof "$PKG" >/dev/null 2>&1; then
+            if ! adb shell pidof com.mahdihi69.pouya >/dev/null 2>&1; then
+              echo "Pouya process is not running after launch"
+              adb logcat -d -t 800
+              exit 1
+            fi
+
+            adb shell am force-stop com.mahdihi69.storymaker
+            adb shell monkey -p com.mahdihi69.storymaker 1
+            sleep 5
+            if ! adb shell pidof com.mahdihi69.storymaker >/dev/null 2>&1; then
               echo "Story Maker process is not running after launch"
               adb logcat -d -t 800
               exit 1
             fi
-            if adb logcat -d -t 800 | grep -q "FATAL EXCEPTION: main"; then
-              echo "Story Maker crashed on startup"
-              adb logcat -d -t 800
+
+            if adb logcat -d -t 1000 | grep -q "FATAL EXCEPTION: main"; then
+              echo "Fatal Android startup crash detected"
+              adb logcat -d -t 1000
               exit 1
             fi
-            echo "Story Maker install + launch smoke test passed"
-      - name: Upload Pouya APK
+            echo "Both APKs installed and launched successfully on Android emulator"
+
+      - name: Upload verified APKs
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: pouya-finance-debug-apk-verified
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: android-apks-runtime-verified
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            story/build/outputs/apk/debug/story-debug.apk
           if-no-files-found: error
-      - name: Upload Story Maker APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: story-maker-debug-apk-verified
-          path: story/build/outputs/apk/debug/story-debug.apk
-          if-no-files-found: error
+
       - name: Publish verified public GitHub Release
+        if: success()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TAG="v2.0.${{ github.run_number }}"
-          gh release create "$TAG" \
-            app/build/outputs/apk/debug/app-debug.apk \
-            story/build/outputs/apk/debug/story-debug.apk \
-            --title "Android APKs $TAG - AI Voice Edition" \
-            --generate-notes
+          gh release create "$TAG"             app/build/outputs/apk/debug/app-debug.apk             story/build/outputs/apk/debug/story-debug.apk             --title "Android APKs $TAG - Runtime Verified"             --generate-notes
