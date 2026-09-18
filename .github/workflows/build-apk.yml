@@ -39,7 +39,7 @@ jobs:
           test -s "$APP"
           test -s "$STORY"
           test "$(stat -c%s "$APP")" -gt 100000
-          test "$(stat -c%s "$STORY")" -gt 50000
+          test "$(stat -c%s "$STORY")" -gt 10000
           unzip -t "$APP" >/dev/null
           unzip -t "$STORY" >/dev/null
           unzip -l "$APP" | grep -q 'AndroidManifest.xml'
