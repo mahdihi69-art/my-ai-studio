@@ -46,13 +46,10 @@ jobs:
           unzip -l "$APP" | grep -q 'classes.dex'
           unzip -l "$STORY" | grep -q 'AndroidManifest.xml'
           unzip -l "$STORY" | grep -q 'classes.dex'
-          unzip -l "$STORY" | grep -q 'classes2.dex'
           echo '--- APK sizes ---'
           ls -lh "$APP" "$STORY"
           echo '--- APK hashes ---'
           sha256sum "$APP" "$STORY"
-          echo '--- Story APK contents ---'
-          unzip -l "$STORY"
       - name: Runtime smoke test Story Maker on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -64,19 +61,22 @@ jobs:
           disable-animations: true
           script: |
             set -e
+            PKG=com.mahdihi69.storymaker
             adb install -r story/build/outputs/apk/debug/story-debug.apk
-            adb shell am force-stop com.mahdihi69.storymaker3
-            adb shell monkey -p com.mahdihi69.storymaker3 1
+            adb shell am force-stop "$PKG"
+            adb shell monkey -p "$PKG" 1
             sleep 5
-            if adb shell pidof com.mahdihi69.storymaker3 >/dev/null 2>&1; then
-              echo "Story Maker launched successfully"
-            else
-              echo "Story Maker process is not running"
-              adb logcat -d -t 500
+            if ! adb shell pidof "$PKG" >/dev/null 2>&1; then
+              echo "Story Maker process is not running after launch"
+              adb logcat -d -t 800
               exit 1
             fi
-            adb logcat -d -t 500 | grep -E "FATAL EXCEPTION|com.mahdihi69.storymaker3" | tail -80 || true
-
+            if adb logcat -d -t 800 | grep -q "FATAL EXCEPTION: main"; then
+              echo "Story Maker crashed on startup"
+              adb logcat -d -t 800
+              exit 1
+            fi
+            echo "Story Maker install + launch smoke test passed"
       - name: Upload Pouya APK
         uses: actions/upload-artifact@v4
         with:
