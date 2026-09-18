@@ -52,11 +52,8 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
           script: |
-            set -u
-            STORY_APK=story/build/outputs/apk/debug/story-debug.apk
-            BUILDER_APK=builder/build/outputs/apk/debug/builder-debug.apk
-            adb install -r "$BUILDER_APK"
-            adb install -r "$STORY_APK"
+            adb install -r "$PWD/builder/build/outputs/apk/debug/builder-debug.apk"
+            adb install -r "$PWD/story/build/outputs/apk/debug/story-debug.apk"
             adb logcat -c
             adb shell am force-stop com.mahdihi69.storymaker3
             adb shell am start -n com.mahdihi69.storymaker3/com.mahdihi69.story.MainActivity
