@@ -2,8 +2,8 @@ plugins { id 'com.android.application' }
 
 def qwenKey = System.getenv("QWEN_API_KEY") ?: ""
 def avalaiKey = System.getenv("AVALAI_API_KEY") ?: ""
-def escapedQwenKey = qwenKey.replace("\\", "\\\\").replace("\"", "\\\"")
-def escapedAvalaiKey = avalaiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+def escapedQwenKey = qwenKey.replace("\\", "\\\\").replace(""", "\\"")
+def escapedAvalaiKey = avalaiKey.replace("\\", "\\\\").replace(""", "\\"")
 
 android {
     namespace 'com.mahdihi69.story'
@@ -12,8 +12,8 @@ android {
         applicationId "com.mahdihi69.storymaker2"
         minSdk 23
         targetSdk 35
-        versionCode 10
-        versionName '1.8.0'
+        versionCode 11
+        versionName '1.8.1'
         buildConfigField 'String', 'QWEN_API_KEY', '\"' + escapedQwenKey + '\"'
         buildConfigField 'String', 'AVALAI_API_KEY', '\"' + escapedAvalaiKey + '\"'
     }
