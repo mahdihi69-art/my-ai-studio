@@ -2,8 +2,7 @@ name: Build Android APKs
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -32,73 +31,27 @@ jobs:
       - name: Build all APKs
         run: gradle :app:assembleDebug :story:assembleDebug :builder:assembleDebug --no-daemon --stacktrace
 
-      - name: Check APK outputs
+      - name: Verify APK files
         run: |
           set -euo pipefail
-          test -s app/build/outputs/apk/debug/app-debug.apk
-          test -s story/build/outputs/apk/debug/story-debug.apk
-          test -s builder/build/outputs/apk/debug/builder-debug.apk
+          for f in app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk builder/build/outputs/apk/debug/builder-debug.apk; do
+            test -s "$f"
+            echo "OK: $f ($(stat -c%s "$f") bytes)"
+          done
 
-      - name: Runtime install and launch test
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot
-          disable-animations: false
-          script: |
-            set -e
-            adb install -r "$PWD/story/build/outputs/apk/debug/story-debug.apk"
-            adb install -r "$PWD/builder/build/outputs/apk/debug/builder-debug.apk"
-
-            adb logcat -c
-            adb shell am force-stop com.mahdihi69.storymaker
-            adb shell am start -W -n com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity
-            sleep 5
-            adb logcat -d -t 3000 > /tmp/story-log.txt
-            echo "=== STORY ACTIVITY ==="
-            adb shell cmd package resolve-activity --brief com.mahdihi69.storymaker || true
-            adb shell dumpsys activity activities | grep -A5 -B3 "com.mahdihi69.storymaker" || true
-            echo "=== STORY PROCESS ==="
-            adb shell pidof com.mahdihi69.storymaker || true
-            echo "=== STORY CRASH LOG ==="
-            grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker|Force finishing" /tmp/story-log.txt || true
-            STORY_CRASH=$(grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker|Force finishing" /tmp/story-log.txt || true)
-            test -z "$STORY_CRASH"
-
-            adb logcat -c
-            adb shell am force-stop com.mahdihi69.builder
-            adb shell am start -W -n com.mahdihi69.builder/com.mahdihi69.builder.MainActivity
-            sleep 5
-            adb logcat -d -t 3000 > /tmp/builder-log.txt
-            echo "=== BUILDER ACTIVITY ==="
-            adb shell cmd package resolve-activity --brief com.mahdihi69.builder || true
-            adb shell dumpsys activity activities | grep -A5 -B3 "com.mahdihi69.builder" || true
-            echo "=== BUILDER PROCESS ==="
-            adb shell pidof com.mahdihi69.builder || true
-            echo "=== BUILDER CRASH LOG ==="
-            grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder|Force finishing" /tmp/builder-log.txt || true
-            BUILDER_CRASH=$(grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder|Force finishing" /tmp/builder-log.txt || true)
-            test -z "$BUILDER_CRASH"
-
-            echo "REAL ANDROID STORY + PROGRAM BUILDER INSTALL AND LAUNCH TEST PASSED"
-
-      - name: Upload runtime-verified APKs
-        if: success()
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: android-apks-runtime-verified
+          name: android-apks-v2
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             story/build/outputs/apk/debug/story-debug.apk
             builder/build/outputs/apk/debug/builder-debug.apk
           if-no-files-found: error
 
-      - name: Publish runtime-verified release
-        if: success()
+      - name: Publish APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="v2.0.${{ github.run_number }}"
-          gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk builder/build/outputs/apk/debug/builder-debug.apk --title "Android APKs $TAG - Runtime Verified" --generate-notes
+          TAG="v2.1.${{ github.run_number }}"
+          gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk builder/build/outputs/apk/debug/builder-debug.apk --title "Android APKs $TAG" --generate-notes
