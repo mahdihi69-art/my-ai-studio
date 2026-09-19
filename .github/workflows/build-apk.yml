@@ -56,22 +56,22 @@ jobs:
             adb install -r "$PWD/story/build/outputs/apk/debug/story-debug.apk"
             adb logcat -c
             adb shell am force-stop com.mahdihi69.storymaker
-            adb shell monkey -p com.mahdihi69.storymaker3 1
+            adb shell monkey -p com.mahdihi69.storymaker 1
             sleep 8
             echo "=== STORY PACKAGE ==="
-            adb shell pm path com.mahdihi69.storymaker3 || true
+            adb shell pm path com.mahdihi69.storymaker || true
             echo "=== STORY ACTIVITY ==="
-            adb shell dumpsys activity activities | grep -A3 -B2 "com.mahdihi69.storymaker3" || true
+            adb shell dumpsys activity activities | grep -A3 -B2 "com.mahdihi69.storymaker" || true
             echo "=== STORY PROCESS ==="
-            adb shell pidof com.mahdihi69.storymaker3 || true
+            adb shell pidof com.mahdihi69.storymaker || true
             echo "=== STORY LOGCAT ==="
-            adb logcat -d -t 1500 | grep -E "AndroidRuntime|com.mahdihi69.storymaker3|com.mahdihi69.story" | tail -n 250 || true
-            PID=$(adb shell pidof com.mahdihi69.storymaker3 | tr -d '\r' | tr -d '\n')
+            adb logcat -d -t 1500 | grep -E "AndroidRuntime|com.mahdihi69.storymaker|com.mahdihi69.story" | tail -n 250 || true
+            PID=$(adb shell pidof com.mahdihi69.storymaker | tr -d '\r' | tr -d '\n')
             if [ -z "$PID" ]; then
               echo "STORY MAKER PROCESS DID NOT STAY ALIVE"
               exit 1
             fi
-            if adb logcat -d -t 1500 | grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker3" | grep -q .; then
+            if adb logcat -d -t 1500 | grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" | grep -q .; then
               echo "STORY MAKER CRASH DETECTED"
               exit 1
             fi
