@@ -101,4 +101,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v2.0.${{ github.run_number }}"
-          gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/builder-debug.apk builder/build/outputs/apk/debug/builder-debug.apk --title "Android APKs $TAG - Runtime Verified" --generate-notes
+          gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk builder/build/outputs/apk/debug/builder-debug.apk --title "Android APKs $TAG - Runtime Verified" --generate-notes
