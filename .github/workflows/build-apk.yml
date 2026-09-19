@@ -12,8 +12,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      QWEN_API_KEY: \${{ secrets.QWEN_API_KEY }}
-      AVALAI_API_KEY: \${{ secrets.AVALAI_API_KEY }}
+      QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+      AVALAI_API_KEY: ${{ secrets.AVALAI_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,26 +56,35 @@ jobs:
             adb install -r "$PWD/story/build/outputs/apk/debug/story-debug.apk"
             adb install -r "$PWD/builder/build/outputs/apk/debug/builder-debug.apk"
             adb logcat -c
+
             adb shell am force-stop com.mahdihi69.storymaker
-            adb shell monkey -p com.mahdihi69.storymaker 1 >/dev/null 2>&1
-            sleep 8
-            echo "=== STORY PACKAGE ==="
-            adb shell pm path com.mahdihi69.storymaker
+            adb shell am start -W -n com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity
+            sleep 5
             echo "=== STORY ACTIVITY ==="
             adb shell dumpsys activity activities | grep -A3 -B2 "com.mahdihi69.storymaker" || true
-            echo "=== STORY PROCESS ==="
-            adb shell ps -A | grep -w "com.mahdihi69.storymaker" || true
             adb shell dumpsys activity activities | grep -q "com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity"
+            STORY_PID=$(adb shell pidof com.mahdihi69.storymaker | tr -d '' || true)
+            test -n "$STORY_PID"
             adb logcat -d -t 1500 > /tmp/story-log.txt
-            grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" /tmp/story-log.txt >/dev/null 2>&1 && echo "STORY MAKER CRASH DETECTED" && exit 1 || true
+            if grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" /tmp/story-log.txt >/dev/null 2>&1; then
+              echo "STORY MAKER CRASH DETECTED"
+              exit 1
+            fi
+
             adb shell am force-stop com.mahdihi69.builder
-            adb shell monkey -p com.mahdihi69.builder 1 >/dev/null 2>&1
+            adb shell am start -W -n com.mahdihi69.builder/com.mahdihi69.builder.MainActivity
             sleep 5
-            echo "=== BUILDER PROCESS ==="
-            adb shell ps -A | grep -w "com.mahdihi69.builder" || true
+            echo "=== BUILDER ACTIVITY ==="
+            adb shell dumpsys activity activities | grep -A3 -B2 "com.mahdihi69.builder" || true
             adb shell dumpsys activity activities | grep -q "com.mahdihi69.builder/com.mahdihi69.builder.MainActivity"
+            BUILDER_PID=$(adb shell pidof com.mahdihi69.builder | tr -d '' || true)
+            test -n "$BUILDER_PID"
             adb logcat -d -t 1500 > /tmp/builder-log.txt
-            grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder" /tmp/builder-log.txt >/dev/null 2>&1 && echo "PROGRAM BUILDER CRASH DETECTED" && exit 1 || true
+            if grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder" /tmp/builder-log.txt >/dev/null 2>&1; then
+              echo "PROGRAM BUILDER CRASH DETECTED"
+              exit 1
+            fi
+
             echo "REAL ANDROID STORY + PROGRAM BUILDER INSTALL AND LAUNCH TEST PASSED"
       - name: Upload runtime-verified APKs
         if: success()
@@ -90,7 +99,7 @@ jobs:
       - name: Publish runtime-verified release
         if: success()
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="v2.0.\${{ github.run_number }}"
+          TAG="v2.0.${{ github.run_number }}"
           gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk builder/build/outputs/apk/debug/builder-debug.apk --title "Android APKs $TAG - Runtime Verified" --generate-notes
