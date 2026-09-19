@@ -2,7 +2,8 @@ name: Build Android APKs
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -17,33 +18,33 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+
       - name: Fix Story Maker compile imports
         run: |
           set -euo pipefail
           sed -i 's/void setBg(Uri u)/void setBg(android.net.Uri u)/g' story/src/main/java/com/mahdihi69/story/MainActivity.java
+
       - name: Build all APKs
         run: gradle :app:assembleDebug :story:assembleDebug :builder:assembleDebug --no-daemon --stacktrace
+
       - name: Check APK outputs
         run: |
           set -euo pipefail
-          APP=app/build/outputs/apk/debug/app-debug.apk
-          STORY=story/build/outputs/apk/debug/story-debug.apk
-          BUILDER=builder/build/outputs/apk/debug/builder-debug.apk
-          test -s "$APP"
-          test -s "$STORY"
-          test -s "$BUILDER"
-          echo "App APK: $(stat -c%s "$APP") bytes"
-          echo "Story APK: $(stat -c%s "$STORY") bytes"
-          echo "Builder APK: $(stat -c%s "$BUILDER") bytes"
-      - name: Runtime install and launch test — Story Maker + Program Builder
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          test -s story/build/outputs/apk/debug/story-debug.apk
+          test -s builder/build/outputs/apk/debug/builder-debug.apk
+
+      - name: Runtime install and launch test
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -60,32 +61,23 @@ jobs:
             adb shell am force-stop com.mahdihi69.storymaker
             adb shell am start -W -n com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity
             sleep 5
-            echo "=== STORY ACTIVITY ==="
-            adb shell dumpsys activity activities | grep -A3 -B2 "com.mahdihi69.storymaker" || true
             adb shell dumpsys activity activities | grep -q "com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity"
-            STORY_PID=$(adb shell pidof com.mahdihi69.storymaker | tr -d '' || true)
+            STORY_PID=$(adb shell pidof com.mahdihi69.storymaker | tr -d '\r' || true)
             test -n "$STORY_PID"
             adb logcat -d -t 1500 > /tmp/story-log.txt
-            if grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" /tmp/story-log.txt >/dev/null 2>&1; then
-              echo "STORY MAKER CRASH DETECTED"
-              exit 1
-            fi
+            ! grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" /tmp/story-log.txt >/dev/null 2>&1
 
             adb shell am force-stop com.mahdihi69.builder
             adb shell am start -W -n com.mahdihi69.builder/com.mahdihi69.builder.MainActivity
             sleep 5
-            echo "=== BUILDER ACTIVITY ==="
-            adb shell dumpsys activity activities | grep -A3 -B2 "com.mahdihi69.builder" || true
             adb shell dumpsys activity activities | grep -q "com.mahdihi69.builder/com.mahdihi69.builder.MainActivity"
-            BUILDER_PID=$(adb shell pidof com.mahdihi69.builder | tr -d '' || true)
+            BUILDER_PID=$(adb shell pidof com.mahdihi69.builder | tr -d '\r' || true)
             test -n "$BUILDER_PID"
             adb logcat -d -t 1500 > /tmp/builder-log.txt
-            if grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder" /tmp/builder-log.txt >/dev/null 2>&1; then
-              echo "PROGRAM BUILDER CRASH DETECTED"
-              exit 1
-            fi
+            ! grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder" /tmp/builder-log.txt >/dev/null 2>&1
 
             echo "REAL ANDROID STORY + PROGRAM BUILDER INSTALL AND LAUNCH TEST PASSED"
+
       - name: Upload runtime-verified APKs
         if: success()
         uses: actions/upload-artifact@v4
@@ -96,6 +88,7 @@ jobs:
             story/build/outputs/apk/debug/story-debug.apk
             builder/build/outputs/apk/debug/builder-debug.apk
           if-no-files-found: error
+
       - name: Publish runtime-verified release
         if: success()
         env:
