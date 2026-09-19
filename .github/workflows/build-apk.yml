@@ -29,7 +29,7 @@ jobs:
         run: |
           set -euo pipefail
           sed -i 's/void setBg(Uri u)/void setBg(android.net.Uri u)/g' story/src/main/java/com/mahdihi69/story/MainActivity.java
-      - name: Build both APKs
+      - name: Build all APKs
         run: gradle :app:assembleDebug :story:assembleDebug :builder:assembleDebug --no-daemon --stacktrace
       - name: Check APK outputs
         run: |
@@ -43,7 +43,7 @@ jobs:
           echo "App APK: $(stat -c%s "$APP") bytes"
           echo "Story APK: $(stat -c%s "$STORY") bytes"
           echo "Builder APK: $(stat -c%s "$BUILDER") bytes"
-      - name: Runtime install and launch test — Story Maker
+      - name: Runtime install and launch test — Story Maker + Program Builder
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -52,35 +52,33 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
           script: |
-            adb install -r "$PWD/builder/build/outputs/apk/debug/builder-debug.apk"
+            set -e
             adb install -r "$PWD/story/build/outputs/apk/debug/story-debug.apk"
+            adb install -r "$PWD/builder/build/outputs/apk/debug/builder-debug.apk"
+
             adb logcat -c
             adb shell am force-stop com.mahdihi69.storymaker
-            adb shell monkey -p com.mahdihi69.storymaker 1
+            adb shell monkey -p com.mahdihi69.storymaker 1 >/dev/null 2>&1
             sleep 8
+
             echo "=== STORY PACKAGE ==="
-            adb shell pm path com.mahdihi69.storymaker || true
+            adb shell pm path com.mahdihi69.storymaker
             echo "=== STORY ACTIVITY ==="
             adb shell dumpsys activity activities | grep -A3 -B2 "com.mahdihi69.storymaker" || true
             echo "=== STORY PROCESS ==="
-            adb shell pidof com.mahdihi69.storymaker || true
-            echo "=== STORY LOGCAT ==="
-            adb logcat -d -t 1500 | grep -E "AndroidRuntime|com.mahdihi69.storymaker|com.mahdihi69.story" | tail -n 250 || true
             PID=$(adb shell pidof com.mahdihi69.storymaker | tr -d '\r' | tr -d '\n')
-            if [ -z "$PID" ]; then
-              echo "STORY MAKER PROCESS DID NOT STAY ALIVE"
-              exit 1
-            fi
-            if adb logcat -d -t 1500 | grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" | grep -q .; then
-              echo "STORY MAKER CRASH DETECTED"
-              exit 1
-            fi
+            echo "Story PID=$PID"
+            test -n "$PID"
+            if adb logcat -d -t 1500 | grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" | grep -q .; then echo "STORY MAKER CRASH DETECTED"; exit 1; fi
+
             adb shell am force-stop com.mahdihi69.builder
-            adb shell monkey -p com.mahdihi69.builder 1
+            adb shell monkey -p com.mahdihi69.builder 1 >/dev/null 2>&1
             sleep 5
-            BPID=$(adb shell pidof com.mahdihi69.builder | tr -d "\r" | tr -d "\n")
-            if [ -z "$BPID" ]; then echo "PROGRAM BUILDER PROCESS DID NOT STAY ALIVE"; exit 1; fi
+            BPID=$(adb shell pidof com.mahdihi69.builder | tr -d '\r' | tr -d '\n')
+            echo "Builder PID=$BPID"
+            test -n "$BPID"
             if adb logcat -d -t 1500 | grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder" | grep -q .; then echo "PROGRAM BUILDER CRASH DETECTED"; exit 1; fi
+
             echo "REAL ANDROID STORY + PROGRAM BUILDER INSTALL AND LAUNCH TEST PASSED"
       - name: Upload runtime-verified APKs
         if: success()
