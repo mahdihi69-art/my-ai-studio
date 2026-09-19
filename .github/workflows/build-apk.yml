@@ -29,11 +29,6 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Fix Story Maker compile imports
-        run: |
-          set -euo pipefail
-          sed -i 's/void setBg(Uri u)/void setBg(android.net.Uri u)/g' story/src/main/java/com/mahdihi69/story/MainActivity.java
-
       - name: Build all APKs
         run: gradle :app:assembleDebug :story:assembleDebug :builder:assembleDebug --no-daemon --stacktrace
 
@@ -59,7 +54,7 @@ jobs:
             adb logcat -c
 
             adb shell am force-stop com.mahdihi69.storymaker
-            adb shell am start -W -n com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity
+            adb shell am start -n com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity
             sleep 5
             adb shell dumpsys activity activities | grep -q "com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity"
             STORY_PID=$(adb shell pidof com.mahdihi69.storymaker | tr -d '\r' || true)
@@ -68,7 +63,7 @@ jobs:
             ! grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" /tmp/story-log.txt >/dev/null 2>&1
 
             adb shell am force-stop com.mahdihi69.builder
-            adb shell am start -W -n com.mahdihi69.builder/com.mahdihi69.builder.MainActivity
+            adb shell am start -n com.mahdihi69.builder/com.mahdihi69.builder.MainActivity
             sleep 5
             adb shell dumpsys activity activities | grep -q "com.mahdihi69.builder/com.mahdihi69.builder.MainActivity"
             BUILDER_PID=$(adb shell pidof com.mahdihi69.builder | tr -d '\r' || true)
