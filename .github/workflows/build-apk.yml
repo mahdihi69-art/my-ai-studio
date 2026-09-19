@@ -63,8 +63,6 @@ jobs:
             adb shell pidof com.mahdihi69.storymaker || true
             echo "=== STORY CRASH LOG ==="
             grep -E "FATAL EXCEPTION|AndroidRuntime|Process: com.mahdihi69.storymaker|Force finishing" /tmp/story-log.txt || true
-            STORY_PID=$(adb shell pidof com.mahdihi69.storymaker | tr -d '\r' || true)
-            test -n "$STORY_PID"
             STORY_CRASH=$(grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker|Force finishing" /tmp/story-log.txt || true)
             test -z "$STORY_CRASH"
 
@@ -79,8 +77,6 @@ jobs:
             adb shell pidof com.mahdihi69.builder || true
             echo "=== BUILDER CRASH LOG ==="
             grep -E "FATAL EXCEPTION|AndroidRuntime|Process: com.mahdihi69.builder|Force finishing" /tmp/builder-log.txt || true
-            BUILDER_PID=$(adb shell pidof com.mahdihi69.builder | tr -d '\r' || true)
-            test -n "$BUILDER_PID"
             BUILDER_CRASH=$(grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder|Force finishing" /tmp/builder-log.txt || true)
             test -z "$BUILDER_CRASH"
 
