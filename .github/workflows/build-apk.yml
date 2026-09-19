@@ -56,7 +56,7 @@ jobs:
             adb install -r "$PWD/story/build/outputs/apk/debug/story-debug.apk"
             adb logcat -c
             adb shell am force-stop com.mahdihi69.storymaker3
-            adb shell am start -n com.mahdihi69.storymaker3/com.mahdihi69.story.MainActivity
+            adb shell monkey -p com.mahdihi69.storymaker3 1
             sleep 8
             echo "=== STORY PACKAGE ==="
             adb shell pm path com.mahdihi69.storymaker3 || true
@@ -76,7 +76,7 @@ jobs:
               exit 1
             fi
             adb shell am force-stop com.mahdihi69.builder
-            adb shell am start -n com.mahdihi69.builder/com.mahdihi69.builder.MainActivity
+            adb shell monkey -p com.mahdihi69.builder 1
             sleep 5
             BPID=$(adb shell pidof com.mahdihi69.builder | tr -d "\r" | tr -d "\n")
             if [ -z "$BPID" ]; then echo "PROGRAM BUILDER PROCESS DID NOT STAY ALIVE"; exit 1; fi
