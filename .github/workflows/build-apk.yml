@@ -69,7 +69,8 @@ jobs:
             PID=$(adb shell pidof com.mahdihi69.storymaker | tr -d '\r' | tr -d '\n')
             echo "Story PID=$PID"
             test -n "$PID"
-            if adb logcat -d -t 1500 | grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" | grep -q .; then echo "STORY MAKER CRASH DETECTED"; exit 1; fi
+            adb logcat -d -t 1500 > /tmp/story-log.txt
+            grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" /tmp/story-log.txt >/dev/null 2>&1 && echo "STORY MAKER CRASH DETECTED" && exit 1 || true
 
             adb shell am force-stop com.mahdihi69.builder
             adb shell monkey -p com.mahdihi69.builder 1 >/dev/null 2>&1
@@ -77,7 +78,8 @@ jobs:
             BPID=$(adb shell pidof com.mahdihi69.builder | tr -d '\r' | tr -d '\n')
             echo "Builder PID=$BPID"
             test -n "$BPID"
-            if adb logcat -d -t 1500 | grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder" | grep -q .; then echo "PROGRAM BUILDER CRASH DETECTED"; exit 1; fi
+            adb logcat -d -t 1500 > /tmp/builder-log.txt
+            grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder" /tmp/builder-log.txt >/dev/null 2>&1 && echo "PROGRAM BUILDER CRASH DETECTED" && exit 1 || true
 
             echo "REAL ANDROID STORY + PROGRAM BUILDER INSTALL AND LAUNCH TEST PASSED"
       - name: Upload runtime-verified APKs
