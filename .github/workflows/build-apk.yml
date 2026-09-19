@@ -54,29 +54,31 @@ jobs:
 
             adb logcat -c
             adb shell am force-stop com.mahdihi69.storymaker
-            adb shell am start -n com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity
-            sleep 8
+            adb shell am start -W -n com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity
+            sleep 5
             adb logcat -d -t 3000 > /tmp/story-log.txt
-            echo "=== STORY TOP ACTIVITY ==="
+            echo "=== STORY ACTIVITY ==="
+            adb shell cmd package resolve-activity --brief com.mahdihi69.storymaker || true
             adb shell dumpsys activity activities | grep -A5 -B3 "com.mahdihi69.storymaker" || true
             echo "=== STORY PROCESS ==="
             adb shell pidof com.mahdihi69.storymaker || true
             echo "=== STORY CRASH LOG ==="
-            grep -E "FATAL EXCEPTION|AndroidRuntime|Process: com.mahdihi69.storymaker|Force finishing" /tmp/story-log.txt || true
+            grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker|Force finishing" /tmp/story-log.txt || true
             STORY_CRASH=$(grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker|Force finishing" /tmp/story-log.txt || true)
             test -z "$STORY_CRASH"
 
             adb logcat -c
             adb shell am force-stop com.mahdihi69.builder
-            adb shell am start -n com.mahdihi69.builder/com.mahdihi69.builder.MainActivity
-            sleep 8
+            adb shell am start -W -n com.mahdihi69.builder/com.mahdihi69.builder.MainActivity
+            sleep 5
             adb logcat -d -t 3000 > /tmp/builder-log.txt
-            echo "=== BUILDER TOP ACTIVITY ==="
+            echo "=== BUILDER ACTIVITY ==="
+            adb shell cmd package resolve-activity --brief com.mahdihi69.builder || true
             adb shell dumpsys activity activities | grep -A5 -B3 "com.mahdihi69.builder" || true
             echo "=== BUILDER PROCESS ==="
             adb shell pidof com.mahdihi69.builder || true
             echo "=== BUILDER CRASH LOG ==="
-            grep -E "FATAL EXCEPTION|AndroidRuntime|Process: com.mahdihi69.builder|Force finishing" /tmp/builder-log.txt || true
+            grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder|Force finishing" /tmp/builder-log.txt || true
             BUILDER_CRASH=$(grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder|Force finishing" /tmp/builder-log.txt || true)
             test -z "$BUILDER_CRASH"
 
@@ -99,4 +101,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v2.0.${{ github.run_number }}"
-          gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk builder/build/outputs/apk/debug/builder-debug.apk --title "Android APKs $TAG - Runtime Verified" --generate-notes
+          gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/builder-debug.apk builder/build/outputs/apk/debug/builder-debug.apk --title "Android APKs $TAG - Runtime Verified" --generate-notes
