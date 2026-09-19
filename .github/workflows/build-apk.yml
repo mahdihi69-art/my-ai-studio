@@ -45,8 +45,8 @@ jobs:
           api-level: 35
           target: google_apis
           arch: x86_64
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
-          disable-animations: true
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot
+          disable-animations: false
           script: |
             set -e
             adb install -r "$PWD/story/build/outputs/apk/debug/story-debug.apk"
