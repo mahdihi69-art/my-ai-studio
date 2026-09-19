@@ -55,21 +55,44 @@ jobs:
 
             adb shell am force-stop com.mahdihi69.storymaker
             adb shell am start -n com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity
-            sleep 5
-            adb shell dumpsys activity activities | grep -q "com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity"
+            sleep 8
+            adb logcat -d -t 3000 > /tmp/story-log.txt
+            echo "=== STORY TOP ACTIVITY ==="
+            adb shell dumpsys activity activities | grep -A5 -B3 "com.mahdihi69.storymaker" || true
+            echo "=== STORY PROCESS ==="
+            adb shell pidof com.mahdihi69.storymaker || true
+            echo "=== STORY CRASH LOG ==="
+            grep -E "FATAL EXCEPTION|AndroidRuntime|Process: com.mahdihi69.storymaker|Force finishing" /tmp/story-log.txt || true
             STORY_PID=$(adb shell pidof com.mahdihi69.storymaker | tr -d '\r' || true)
-            test -n "$STORY_PID"
-            adb logcat -d -t 1500 > /tmp/story-log.txt
-            ! grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" /tmp/story-log.txt >/dev/null 2>&1
+            if [ -z "$STORY_PID" ]; then
+              echo "STORY APP DID NOT STAY RUNNING"
+              exit 1
+            fi
+            if grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" /tmp/story-log.txt >/dev/null 2>&1; then
+              echo "STORY MAKER CRASH DETECTED"
+              exit 1
+            fi
 
+            adb logcat -c
             adb shell am force-stop com.mahdihi69.builder
             adb shell am start -n com.mahdihi69.builder/com.mahdihi69.builder.MainActivity
-            sleep 5
-            adb shell dumpsys activity activities | grep -q "com.mahdihi69.builder/com.mahdihi69.builder.MainActivity"
+            sleep 8
+            adb logcat -d -t 3000 > /tmp/builder-log.txt
+            echo "=== BUILDER TOP ACTIVITY ==="
+            adb shell dumpsys activity activities | grep -A5 -B3 "com.mahdihi69.builder" || true
+            echo "=== BUILDER PROCESS ==="
+            adb shell pidof com.mahdihi69.builder || true
+            echo "=== BUILDER CRASH LOG ==="
+            grep -E "FATAL EXCEPTION|AndroidRuntime|Process: com.mahdihi69.builder|Force finishing" /tmp/builder-log.txt || true
             BUILDER_PID=$(adb shell pidof com.mahdihi69.builder | tr -d '\r' || true)
-            test -n "$BUILDER_PID"
-            adb logcat -d -t 1500 > /tmp/builder-log.txt
-            ! grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder" /tmp/builder-log.txt >/dev/null 2>&1
+            if [ -z "$BUILDER_PID" ]; then
+              echo "PROGRAM BUILDER DID NOT STAY RUNNING"
+              exit 1
+            fi
+            if grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder" /tmp/builder-log.txt >/dev/null 2>&1; then
+              echo "PROGRAM BUILDER CRASH DETECTED"
+              exit 1
+            fi
 
             echo "REAL ANDROID STORY + PROGRAM BUILDER INSTALL AND LAUNCH TEST PASSED"
 
