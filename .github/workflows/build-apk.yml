@@ -39,6 +39,31 @@ jobs:
             echo "OK: $f ($(stat -c%s "$f") bytes)"
           done
 
+      - name: Verify Story Maker APK signing and manifest
+        run: |
+          set -euo pipefail
+          STORY="story/build/outputs/apk/debug/story-debug.apk"
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose "$STORY"
+          $ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$STORY" | grep -E "package:|sdkVersion|targetSdkVersion"
+
+      - name: Test Story Maker on Android 12 (API 31)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 31
+          target: default
+          arch: x86_64
+          profile: pixel_4
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot
+          disable-animations: true
+          script: |
+            set -e
+            adb install -r story/build/outputs/apk/debug/story-debug.apk
+            adb shell am start -W -n com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity
+            sleep 3
+            adb shell dumpsys package com.mahdihi69.storymaker | grep -q "versionName=2.0.0"
+            adb shell cmd package resolve-activity --brief com.mahdihi69.storymaker | grep -q "com.mahdihi69.story/.MainActivity"
+            echo "STORY_ANDROID12_INSTALL_OK"
+
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
