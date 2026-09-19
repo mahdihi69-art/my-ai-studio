@@ -51,8 +51,8 @@ jobs:
             set -e
             adb install -r "$PWD/story/build/outputs/apk/debug/story-debug.apk"
             adb install -r "$PWD/builder/build/outputs/apk/debug/builder-debug.apk"
-            adb logcat -c
 
+            adb logcat -c
             adb shell am force-stop com.mahdihi69.storymaker
             adb shell am start -n com.mahdihi69.storymaker/com.mahdihi69.story.MainActivity
             sleep 8
@@ -64,14 +64,9 @@ jobs:
             echo "=== STORY CRASH LOG ==="
             grep -E "FATAL EXCEPTION|AndroidRuntime|Process: com.mahdihi69.storymaker|Force finishing" /tmp/story-log.txt || true
             STORY_PID=$(adb shell pidof com.mahdihi69.storymaker | tr -d '\r' || true)
-            if [ -z "$STORY_PID" ]; then
-              echo "STORY APP DID NOT STAY RUNNING"
-              exit 1
-            fi
-            if grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker" /tmp/story-log.txt >/dev/null 2>&1; then
-              echo "STORY MAKER CRASH DETECTED"
-              exit 1
-            fi
+            test -n "$STORY_PID"
+            STORY_CRASH=$(grep -E "FATAL EXCEPTION|Process: com.mahdihi69.storymaker|Force finishing" /tmp/story-log.txt || true)
+            test -z "$STORY_CRASH"
 
             adb logcat -c
             adb shell am force-stop com.mahdihi69.builder
@@ -85,14 +80,9 @@ jobs:
             echo "=== BUILDER CRASH LOG ==="
             grep -E "FATAL EXCEPTION|AndroidRuntime|Process: com.mahdihi69.builder|Force finishing" /tmp/builder-log.txt || true
             BUILDER_PID=$(adb shell pidof com.mahdihi69.builder | tr -d '\r' || true)
-            if [ -z "$BUILDER_PID" ]; then
-              echo "PROGRAM BUILDER DID NOT STAY RUNNING"
-              exit 1
-            fi
-            if grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder" /tmp/builder-log.txt >/dev/null 2>&1; then
-              echo "PROGRAM BUILDER CRASH DETECTED"
-              exit 1
-            fi
+            test -n "$BUILDER_PID"
+            BUILDER_CRASH=$(grep -E "FATAL EXCEPTION|Process: com.mahdihi69.builder|Force finishing" /tmp/builder-log.txt || true)
+            test -z "$BUILDER_CRASH"
 
             echo "REAL ANDROID STORY + PROGRAM BUILDER INSTALL AND LAUNCH TEST PASSED"
 
