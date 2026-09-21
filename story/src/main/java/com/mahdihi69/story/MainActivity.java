@@ -221,7 +221,7 @@ public class MainActivity extends Activity {
     String aiCall(String name,String prompt)throws Exception{
         String key=""; String url=""; String model=""; String label=name;
         if(name.equals("Qwen")){key=qkey();url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";model="qwen-max-latest";}
-        else if(name.equals("DeepSeek")){key=dkey();url="https://api.deepseek.com/chat/completions";model="deepseek-v4-flash";}
+        else if(name.equals("DeepSeek")){key=dkey();url="https://api.deepseek.com/chat/completions";model="deepseek-flash";}
         else {key=akey();url="https://api.avalai.ir/v1/chat/completions";model="gpt-5.5";}
         if(key.isEmpty())throw new IOException(label+" key missing");
         JSONObject body=new JSONObject().put("model",model).put("temperature",1.0).put("max_tokens",7000);
