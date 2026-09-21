@@ -1,9 +1,9 @@
 plugins { id 'com.android.application' }
 
 def qwenKey = System.getenv("QWEN_API_KEY") ?: ""
+def deepseekKey = System.getenv("DEEPSEEK_API_KEY") ?: ""
 def avalaiKey = System.getenv("AVALAI_API_KEY") ?: ""
-def escapedQwenKey = qwenKey.replace('\\', '\\\\').replace('"', '\\"')
-def escapedAvalaiKey = avalaiKey.replace('\\', '\\\\').replace('"', '\\"')
+def esc = { String s -> s.replace('\\', '\\\\').replace('"', '\\"') }
 
 android {
     namespace 'com.mahdihi69.story'
@@ -12,10 +12,11 @@ android {
         applicationId "com.mahdihi69.storymaker"
         minSdk 23
         targetSdk 31
-        versionCode 17
-        versionName '2.2.0'
-        buildConfigField 'String', 'QWEN_API_KEY', '"' + escapedQwenKey + '"'
-        buildConfigField 'String', 'AVALAI_API_KEY', '"' + escapedAvalaiKey + '"'
+        versionCode 18
+        versionName '2.3.0'
+        buildConfigField 'String', 'QWEN_API_KEY', '"' + esc(qwenKey) + '"'
+        buildConfigField 'String', 'DEEPSEEK_API_KEY', '"' + esc(deepseekKey) + '"'
+        buildConfigField 'String', 'AVALAI_API_KEY', '"' + esc(avalaiKey) + '"'
     }
     buildFeatures { buildConfig true }
     compileOptions {
@@ -23,3 +24,42 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 }
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.alphacephei:vosk-android:0.3.75'
+}
+
+def voskZip = file("${buildDir}/vosk/fa.zip")
+def voskAssets = file("${projectDir}/src/main/assets/vosk-model-small-fa-0.4")
+tasks.register("downloadPersianVoskModel") {
+    outputs.dir(voskAssets)
+    doLast {
+        if (!voskAssets.exists()) {
+            voskAssets.parentFile.mkdirs()
+            voskZip.parentFile.mkdirs()
+            if (!voskZip.exists()) {
+                new URL("https://alphacephei.com/vosk/models/vosk-model-small-fa-0.4.zip").withInputStream { i ->
+                    voskZip.withOutputStream { o -> o << i }
+                }
+            }
+            copy {
+                from zipTree(voskZip)
+                into project.layout.buildDirectory.dir("vosk/unpacked")
+            }
+            def unpacked = file("${buildDir}/vosk/unpacked/vosk-model-small-fa-0.4")
+            copy {
+                from unpacked
+                into voskAssets
+            }
+        }
+        if (!new File(voskAssets, "uuid").exists()) {
+            throw new GradleException("Persian Vosk model is incomplete: uuid missing")
+        }
+    }
+}
+tasks.named("preBuild").configure { dependsOn("downloadPersianVoskModel") }
