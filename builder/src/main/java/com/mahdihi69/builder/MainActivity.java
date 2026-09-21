@@ -11,7 +11,7 @@ public class MainActivity extends Activity {
     LinearLayout root, form;
     EditText name, purpose, inputs, outputs, pages, style, colors, extras;
     Spinner type, ai, storage, internet;
-    TextView status;
+    TextView status, preview;
 
     int dp(float v){ return (int)(v*getResources().getDisplayMetrics().density+0.5f); }
 
@@ -68,8 +68,13 @@ public class MainActivity extends Activity {
         Button build=new Button(this);
         build.setText("🚀 ساخت مشخصات پروژه"); build.setTextSize(16);
         build.setOnClickListener(v->generate()); root.addView(build);
-
+        LinearLayout actions=new LinearLayout(this); actions.setOrientation(LinearLayout.HORIZONTAL);
+        Button copy=new Button(this); copy.setText("📋 کپی JSON"); copy.setAllCaps(false); actions.addView(copy,new LinearLayout.LayoutParams(0,dp(52),1));
+        Button share=new Button(this); share.setText("📤 اشتراک"); share.setAllCaps(false); actions.addView(share,new LinearLayout.LayoutParams(0,dp(52),1));
+        Button clear=new Button(this); clear.setText("♻️ پاک"); clear.setAllCaps(false); actions.addView(clear,new LinearLayout.LayoutParams(0,dp(52),1)); root.addView(actions);
         status=label("هنوز پروژه‌ای ساخته نشده."); status.setTextSize(14); root.addView(status);
+        preview=label("پیش‌نمایش JSON پروژه اینجا نمایش داده می‌شود."); preview.setTextIsSelectable(true); preview.setPadding(dp(10),dp(10),dp(10),dp(10)); preview.setBackgroundColor(Color.WHITE); root.addView(preview);
+        copy.setOnClickListener(v->copyJson()); share.setOnClickListener(v->shareJson()); clear.setOnClickListener(v->clearForm());
         scroll.addView(root); setContentView(scroll);
     }
 
@@ -89,7 +94,7 @@ public class MainActivity extends Activity {
             o.put("internet",internet.getSelectedItem().toString());
             o.put("extras",extras.getText().toString().trim());
             getSharedPreferences("builder",0).edit().putString("last_spec",o.toString()).apply();
-            status.setText("✅ مشخصات پروژه ذخیره شد. نسخه بعدی همین مشخصات را مستقیم به قالب Android + GitHub Actions تبدیل می‌کند.");
+            status.setText("✅ مشخصات پروژه ذخیره و آماده انتقال به قالب Android + GitHub Actions شد."); preview.setText(o.toString(2));
         }catch(Exception e){ status.setText("خطا در ساخت مشخصات: "+e.getMessage()); }
     }
 }
