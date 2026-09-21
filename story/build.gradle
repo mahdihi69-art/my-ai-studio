@@ -9,13 +9,24 @@ android {
     namespace 'com.mahdihi69.story'
     compileSdk 35
     defaultConfig {
-        applicationId "com.mahdihi69.storymaker"
+        applicationId "com.mahdihi69.storymaker2026"
         minSdk 23
-        targetSdk 31
-        versionCode 15
-        versionName '2.0.0'
+        targetSdk 35
+        versionCode 16
+        versionName '2.1.0'
         buildConfigField 'String', 'QWEN_API_KEY', '"' + escapedQwenKey + '"'
         buildConfigField 'String', 'AVALAI_API_KEY', '"' + escapedAvalaiKey + '"'
+    }
+    signingConfigs {
+        stableDebug {
+            storeFile file("${rootDir}/build-keys/myai-debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
+    buildTypes {
+        debug { signingConfig signingConfigs.stableDebug }
     }
     buildFeatures { buildConfig true }
     compileOptions {
