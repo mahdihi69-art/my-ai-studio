@@ -38,7 +38,9 @@ jobs:
             test -s "$f"
             $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose "$f"
             echo "VERIFIED: $f ($(stat -c%s "$f") bytes)"
-            $ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$f" | grep -E "package:|sdkVersion|targetSdkVersion"
+            BADGING=$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$f")
+            echo "$BADGING" | grep -E "package:|sdkVersion|targetSdkVersion"
+            if echo "$BADGING" | grep -q "testOnly='true'"; then echo "ERROR: testOnly=true"; exit 1; fi
           done
           echo "Story manifest:"
           $ANDROID_HOME/build-tools/35.0.0/aapt dump badging story/build/outputs/apk/debug/story-debug.apk | grep -E "package:|sdkVersion|targetSdkVersion"
