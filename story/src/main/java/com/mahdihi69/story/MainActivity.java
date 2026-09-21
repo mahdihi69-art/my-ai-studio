@@ -24,7 +24,7 @@ import org.vosk.android.StorageService;
 
 public class MainActivity extends Activity {
     EditText topic, chars, lesson, ending;
-    Spinner genre, age, length, provider;
+    Spinner genre, age, length, provider, modelChoice;
     CheckBox poem;
     TextView output, status, libraryInfo;
     TextToSpeech nativeTts;
@@ -106,6 +106,9 @@ public class MainActivity extends Activity {
         provider=new Spinner(this); provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,
                 new String[]{"خودکار — پل هوشمند","Qwen — مستقیم","DeepSeek — مستقیم","AvalAI — مسیر ایران"}));
         add(box,"🧠 انتخاب اتصال هوش مصنوعی",provider);
+        modelChoice=new Spinner(this); modelChoice.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"Qwen Max — خلاقیت","DeepSeek V4 Flash — استدلال","GPT-5.4 — از مسیر AvalAI","Claude Sonnet 4.6 — از مسیر AvalAI","Gemini 2.5 Pro — از مسیر AvalAI"}));
+        add(box,"🤖 مدل مورد استفاده",modelChoice);
 
         poem=new CheckBox(this); poem.setText("🎵 شعر کوتاه و تازه هم داخل داستان باشد"); box.addView(poem);
         add(box,"💡 پند یا آموزش",lesson); add(box,"🏁 پایان",ending);
@@ -220,16 +223,28 @@ public class MainActivity extends Activity {
 
     String aiCall(String name,String prompt)throws Exception{
         String key=""; String url=""; String model=""; String label=name;
-        if(name.equals("Qwen")){key=qkey();url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";model="qwen-max-latest";}
-        else if(name.equals("DeepSeek")){key=dkey();url="https://api.deepseek.com/chat/completions";model="deepseek-flash";}
-        else {key=akey();url="https://api.avalai.ir/v1/chat/completions";model="gpt-5.5";}
+        String chosen=String.valueOf(modelChoice.getSelectedItem());
+        if(name.equals("Qwen")){
+            key=qkey(); url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";
+            model="qwen-max-latest";
+        } else if(name.equals("DeepSeek")){
+            key=dkey(); url="https://api.deepseek.com/chat/completions";
+            model="deepseek-v4-flash";
+        } else {
+            key=akey();
+            url="https://api.avalai.ir/v1/chat/completions";
+            if(chosen.startsWith("Claude")) model="claude-sonnet-4-6";
+            else if(chosen.startsWith("Gemini")) model="gemini-2.5-pro";
+            else model="gpt-5.4";
+        }
         if(key.isEmpty())throw new IOException(label+" key missing");
         JSONObject body=new JSONObject().put("model",model).put("temperature",1.0).put("max_tokens",7000);
         JSONArray m=new JSONArray();
         m.put(new JSONObject().put("role","system").put("content","فقط فارسی بنویس. خلاق، منسجم، دقیق و غیرتکراری باش."));
         m.put(new JSONObject().put("role","user").put("content",prompt)); body.put("messages",m);
         String r=post(url,key,body.toString());
-        String s=new JSONObject(r).getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content","").trim();
+        JSONObject root=new JSONObject(r);
+        String s=root.getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content","").trim();
         if(s.isEmpty())throw new IOException(label+" empty response");
         return s;
     }
