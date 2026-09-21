@@ -60,5 +60,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="story-v2.3.${{ github.run_number }}"
+          TAG="story-v2.5.${{ github.run_number }}"
           gh release create "$TAG" story/build/outputs/apk/debug/story-debug.apk             --title "داستان‌ساز $TAG" --generate-notes
