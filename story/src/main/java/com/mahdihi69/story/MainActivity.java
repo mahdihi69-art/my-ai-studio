@@ -17,16 +17,22 @@ import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
+import org.vosk.Model;
+import org.vosk.Recognizer;
+import org.vosk.android.SpeechService;
+import org.vosk.android.StorageService;
 
 public class MainActivity extends Activity {
     EditText topic, chars, lesson, ending;
-    Spinner genre, age, length;
+    Spinner genre, age, length, provider;
     CheckBox poem;
     TextView output, status, libraryInfo;
     TextToSpeech nativeTts;
     SpeechRecognizer rec;
     MediaPlayer player;
-    boolean ttsReady=false, voiceMode=false;
+    boolean ttsReady=false, voiceMode=false, voskReady=false;
+    Model voskModel;
+    SpeechService voskService;
     final ExecutorService net=Executors.newSingleThreadExecutor();
     static final int PICK=31;
     android.content.SharedPreferences prefs;
@@ -97,6 +103,10 @@ public class MainActivity extends Activity {
                 new String[]{"کوتاه","متوسط","بلند","خیلی بلند"}));
         add(box,"📏 اندازه داستان",length);
 
+        provider=new Spinner(this); provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"خودکار — پل هوشمند","Qwen — مستقیم","DeepSeek — مستقیم","AvalAI — مسیر ایران"}));
+        add(box,"🧠 انتخاب اتصال هوش مصنوعی",provider);
+
         poem=new CheckBox(this); poem.setText("🎵 شعر کوتاه و تازه هم داخل داستان باشد"); box.addView(poem);
         add(box,"💡 پند یا آموزش",lesson); add(box,"🏁 پایان",ending);
 
@@ -135,7 +145,7 @@ public class MainActivity extends Activity {
         sc.addView(box); root.addView(sc,new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
 
         loadLast();
-        new Handler(getMainLooper()).postDelayed(()->{initTts();initSpeech();},700);
+        new Handler(getMainLooper()).postDelayed(()->{initTts();initSpeech();initOfflineVoice();},700);
 
         gen.setOnClickListener(v->generate());
         vb.setOnClickListener(v->toggleVoice());
@@ -197,29 +207,64 @@ public class MainActivity extends Activity {
     }
 
     String qkey(){return BuildConfig.QWEN_API_KEY==null?"":BuildConfig.QWEN_API_KEY.trim();}
+    String dkey(){return BuildConfig.DEEPSEEK_API_KEY==null?"":BuildConfig.DEEPSEEK_API_KEY.trim();}
     String akey(){return BuildConfig.AVALAI_API_KEY==null?"":BuildConfig.AVALAI_API_KEY.trim();}
+
+    String storyPrompt(String t){
+        return "یک داستان کاملاً جدید و غیرتکراری فارسی برای کتاب صوتی بنویس. موضوع: "+t+
+        ". شخصیت‌ها: "+chars.getText()+". ژانر: "+genre.getSelectedItem()+". سن: "+age.getSelectedItem()+
+        ". طول: "+length.getSelectedItem()+". پند: "+lesson.getText()+". پایان: "+ending.getText()+
+        ". "+(poem.isChecked()?"یک شعر کوتاه کاملاً جدید و مرتبط داخل داستان بیاور. ":"")+
+        "شروع قوی، شخصیت‌پردازی، گفت‌وگوی طبیعی، حداقل دو اتفاق مهم، یک نقطه عطف و پایان رضایت‌بخش داشته باشد. برای کودک ساده و تصویری و برای بزرگسال داستانی‌تر بنویس. فقط متن نهایی داستان را برگردان.";
+    }
+
+    String aiCall(String name,String prompt)throws Exception{
+        String key=""; String url=""; String model=""; String label=name;
+        if(name.equals("Qwen")){key=qkey();url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";model="qwen-max-latest";}
+        else if(name.equals("DeepSeek")){key=dkey();url="https://api.deepseek.com/chat/completions";model="deepseek-v4-flash";}
+        else {key=akey();url="https://api.avalai.ir/v1/chat/completions";model="gpt-5.5";}
+        if(key.isEmpty())throw new IOException(label+" key missing");
+        JSONObject body=new JSONObject().put("model",model).put("temperature",1.0).put("max_tokens",7000);
+        JSONArray m=new JSONArray();
+        m.put(new JSONObject().put("role","system").put("content","فقط فارسی بنویس. خلاق، منسجم، دقیق و غیرتکراری باش."));
+        m.put(new JSONObject().put("role","user").put("content",prompt)); body.put("messages",m);
+        String r=post(url,key,body.toString());
+        String s=new JSONObject(r).getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content","").trim();
+        if(s.isEmpty())throw new IOException(label+" empty response");
+        return s;
+    }
+
+    String generateWithBridge(String prompt)throws Exception{
+        String selected=String.valueOf(provider.getSelectedItem());
+        ArrayList<String> order=new ArrayList<>();
+        if(selected.startsWith("Qwen")) order.add("Qwen");
+        else if(selected.startsWith("DeepSeek")) order.add("DeepSeek");
+        else if(selected.startsWith("AvalAI")) order.add("AvalAI");
+        else { order.add("AvalAI"); order.add("DeepSeek"); order.add("Qwen"); }
+        Exception last=null;
+        for(String p:order)try{
+            runOnUiThread(()->status.setText("🔗 اتصال "+p+" در حال پاسخ‌گویی…"));
+            String s=aiCall(p,prompt);
+            final String used=p;
+            runOnUiThread(()->status.setText("✅ داستان با "+used+" ساخته شد"));
+            return s;
+        }catch(Exception e){last=e;}
+        throw last==null?new IOException("No provider"):last;
+    }
 
     void generate(){
         String t=topic.getText().toString().trim();
         if(t.isEmpty()){status.setText("موضوع را وارد کنید یا موضوع شانسی بگیرید");return;}
-        String key=qkey();
-        if(key.isEmpty()){status.setText("🪄 ساخت داستان آفلاین…");localStory(t);return;}
-        status.setText("🧠 نویسنده هوشمند در حال نوشتن است…");
-        String p="یک داستان کاملاً جدید و غیرتکراری فارسی برای کتاب صوتی بنویس. موضوع: "+t+
-        ". شخصیت‌ها: "+chars.getText()+". ژانر: "+genre.getSelectedItem()+". سن: "+age.getSelectedItem()+
-        ". طول: "+length.getSelectedItem()+". پند: "+lesson.getText()+". پایان: "+ending.getText()+
-        ". "+(poem.isChecked()?"یک شعر کوتاه کاملاً جدید و مرتبط داخل داستان بیاور. ":"")+
-        "شروع داستان باید قوی باشد، شخصیت‌ها هدف و ویژگی داشته باشند، گفت‌وگو طبیعی باشد، حداقل دو اتفاق مهم و یک نقطه عطف داشته باشد و پایان مشخص و رضایت‌بخش باشد. برای کودک زبان ساده و تصویرساز و برای بزرگسال زبان داستانی‌تر استفاده کن. فقط متن نهایی داستان را برگردان.";
-        net.execute(()->{try{
-            JSONObject body=new JSONObject().put("model","qwen3.7-plus").put("temperature",1.12).put("max_tokens",6500);
-            JSONArray m=new JSONArray();
-            m.put(new JSONObject().put("role","system").put("content","فقط فارسی بنویس. خلاق، منسجم و غیرتکراری باش."));
-            m.put(new JSONObject().put("role","user").put("content",p)); body.put("messages",m);
-            String r=post("https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",key,body.toString());
-            String s=new JSONObject(r).getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content","").trim();
-            if(s.isEmpty())throw new IOException();
-            runOnUiThread(()->{output.setText(s);prefs.edit().putString("last",s).apply();status.setText("✅ داستان تازه آماده شد");if(voiceMode)speak(s);});
-        }catch(Exception e){runOnUiThread(()->{status.setText("⚠️ اتصال هوش مصنوعی ناموفق بود؛ نسخه آفلاین اجرا شد");localStory(t);});}});
+        String p=storyPrompt(t);
+        status.setText("🔗 پل هوشمند در حال انتخاب بهترین اتصال…");
+        net.execute(()->{
+            try{
+                String s=generateWithBridge(p);
+                runOnUiThread(()->{output.setText(s);prefs.edit().putString("last",s).apply();if(voiceMode)speak(s);});
+            }catch(Exception e){
+                runOnUiThread(()->{status.setText("⚠️ اتصال‌ها در دسترس نبودند؛ حالت آفلاین اجرا شد");localStory(t);});
+            }
+        });
     }
 
     void localStory(String t){
@@ -247,7 +292,7 @@ public class MainActivity extends Activity {
         if(voiceMode)speak(output.getText().toString());
     }
 
-    void initTts(){try{nativeTts=new TextToSpeech(this,x->{if(x==TextToSpeech.SUCCESS){int r=nativeTts.setLanguage(new Locale("fa","IR"));ttsReady=r!=TextToSpeech.LANG_MISSING_DATA&&r!=TextToSpeech.LANG_NOT_SUPPORTED;nativeTts.setSpeechRate(.9f);}});}catch(Exception ignored){}}
+    void initTts(){try{nativeTts=new TextToSpeech(this,x->{if(x==TextToSpeech.SUCCESS){int rr=nativeTts.setLanguage(new Locale("fa","IR"));ttsReady=rr!=TextToSpeech.LANG_MISSING_DATA&&rr!=TextToSpeech.LANG_NOT_SUPPORTED;nativeTts.setSpeechRate(.9f);}});}catch(Exception ignored){}}
     void initSpeech(){try{if(!SpeechRecognizer.isRecognitionAvailable(this))return;rec=SpeechRecognizer.createSpeechRecognizer(this);rec.setRecognitionListener(new RecognitionListener(){
         public void onReadyForSpeech(Bundle b){status.setText("🎙️ گوش می‌دهم…");}
         public void onBeginningOfSpeech(){} public void onRmsChanged(float r){} public void onBufferReceived(byte[] b){} public void onEndOfSpeech(){}
@@ -255,12 +300,68 @@ public class MainActivity extends Activity {
         public void onError(int e){if(voiceMode)new Handler(getMainLooper()).postDelayed(()->listen(),600);}
         public void onPartialResults(Bundle b){} public void onEvent(int e,Bundle b){}
     });}catch(Exception ignored){}}
-    void toggleVoice(){voiceMode=!voiceMode;if(voiceMode){status.setText("🎙️ دستیار صوتی فعال است");listen();}else{if(rec!=null)rec.cancel();status.setText("⏹️ دستیار صوتی خاموش شد");}}
-    void listen(){if(!voiceMode||rec==null)return;try{rec.cancel();Intent i=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);i.putExtra(RecognizerIntent.EXTRA_LANGUAGE,"fa-IR");i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS,2);rec.startListening(i);}catch(Exception ignored){}}
-    void voiceCommand(String s){s=s.replace('ي','ی').replace('ك','ک').trim();if(s.isEmpty()){listen();return;}String x=s.replace("داستان"," ").replace("قصه"," ").replace("بساز"," ").replace("بنویس"," ").trim();if(x.length()>3){topic.setText(x);generate();}else{topic.setText(s);status.setText("موضوع دریافت شد؛ حالا داستان را می‌سازم");generate();}if(voiceMode)new Handler(getMainLooper()).postDelayed(()->listen(),1000);}
+
+    void initOfflineVoice(){
+        if(Build.VERSION.SDK_INT>=23 && checkSelfPermission("android.permission.RECORD_AUDIO")!=android.content.pm.PackageManager.PERMISSION_GRANTED){
+            requestPermissions(new String[]{"android.permission.RECORD_AUDIO"},77); return;
+        }
+        try{
+            StorageService.unpack(this,"vosk-model-small-fa-0.4","story-vosk-model",
+                m->{voskModel=m;voskReady=true;status.setText("🎙️ فرمان صوتی آفلاین فارسی آماده است");},
+                e->{voskReady=false;status.setText("🎙️ حالت صوتی اینترنتی آماده است");});
+        }catch(Exception e){voskReady=false;}
+    }
+
+    void startVosk(){
+        if(!voskReady||voskModel==null){listen();return;}
+        try{
+            if(voskService!=null){voskService.stop();voskService.shutdown();voskService=null;}
+            Recognizer rr=new Recognizer(voskModel,16000.0f);
+            voskService=new SpeechService(rr,16000.0f);
+            voskService.startListening(new org.vosk.android.RecognitionListener(){
+                public void onPartialResult(String s){}
+                public void onResult(String s){handleVoskJson(s,false);}
+                public void onFinalResult(String s){handleVoskJson(s,true);}
+                public void onError(Exception e){if(voiceMode)new Handler(getMainLooper()).postDelayed(()->startVosk(),500);}
+                public void onTimeout(){if(voiceMode)new Handler(getMainLooper()).postDelayed(()->startVosk(),300);}
+            });
+            status.setText("🎙️ گوش می‌دهم — بدون اینترنت");
+        }catch(Exception e){listen();}
+    }
+
+    void handleVoskJson(String json,boolean fin){
+        try{
+            String s=new JSONObject(json).optString(fin?"text":"partial","").trim();
+            if(fin&&s.length()>1){voiceCommand(s); if(voiceMode)new Handler(getMainLooper()).postDelayed(()->startVosk(),700);}
+        }catch(Exception ignored){}
+    }
+
+    void toggleVoice(){
+        voiceMode=!voiceMode;
+        if(voiceMode){
+            status.setText(voskReady?"🎙️ فرمان صوتی آفلاین فارسی فعال شد":"🎙️ فرمان صوتی فعال شد");
+            if(voskReady)startVosk();else listen();
+        }else{
+            if(voskService!=null){try{voskService.stop();voskService.shutdown();}catch(Exception ignored){}voskService=null;}
+            if(rec!=null)rec.cancel();
+            status.setText("⏹️ دستیار صوتی خاموش شد");
+        }
+    }
+    void listen(){
+        if(!voiceMode||rec==null)return;
+        try{rec.cancel();Intent i=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE,"fa-IR");i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS,2);rec.startListening(i);
+        }catch(Exception ignored){}
+    }
+    void voiceCommand(String s){
+        s=s.replace('ي','ی').replace('ك','ک').trim(); if(s.isEmpty())return;
+        String x=s.replace("داستان"," ").replace("قصه"," ").replace("بساز"," ").replace("بنویس"," ").trim();
+        topic.setText(x.length()>3?x:s); generate();
+    }
 
     void speak(String text){if(text==null||text.trim().isEmpty())return;String k=akey();if(!k.isEmpty())net.execute(()->{try{
-        JSONObject b=new JSONObject().put("model","gpt-audio-1.5").put("voice","coral").put("input",text.length()>4096?text.substring(0,4096):text).put("response_format","mp3");
+        JSONObject b=new JSONObject().put("model","gpt-4o-mini-tts").put("voice","coral").put("input",text.length()>4096?text.substring(0,4096):text).put("response_format","mp3");
         byte[] a=bytes("https://api.avalai.ir/v1/audio/speech",k,b.toString());File f=new File(getCacheDir(),"story_voice.mp3");
         try(FileOutputStream o=new FileOutputStream(f)){o.write(a);}runOnUiThread(()->play(f));return;
     }catch(Exception ignored){}runOnUiThread(()->nativeSpeak(text));});else nativeSpeak(text);}
@@ -272,5 +373,5 @@ public class MainActivity extends Activity {
     void stopAudio(){if(player!=null){try{player.stop();}catch(Exception ignored){}player.release();player=null;}if(nativeTts!=null)nativeTts.stop();}
     void setBg(Uri u){try{InputStream in=getContentResolver().openInputStream(u);Bitmap b=BitmapFactory.decodeStream(in);if(in!=null)in.close();if(b==null)return;getWindow().getDecorView().setBackground(new android.graphics.drawable.BitmapDrawable(getResources(),b));}catch(Exception ignored){}}
     @Override protected void onActivityResult(int r,int c,Intent d){super.onActivityResult(r,c,d);if(r==PICK&&c==RESULT_OK&&d!=null)setBg(d.getData());}
-    @Override protected void onDestroy(){voiceMode=false;if(rec!=null)rec.destroy();if(nativeTts!=null)nativeTts.shutdown();if(player!=null)player.release();net.shutdownNow();super.onDestroy();}
+    @Override protected void onDestroy(){voiceMode=false;if(rec!=null)rec.destroy();if(nativeTts!=null)nativeTts.shutdown();if(voskService!=null){try{voskService.stop();voskService.shutdown();}catch(Exception ignored){}} if(voskModel!=null){try{voskModel.close();}catch(Exception ignored){}} if(player!=null)player.release();net.shutdownNow();super.onDestroy();}
 }
