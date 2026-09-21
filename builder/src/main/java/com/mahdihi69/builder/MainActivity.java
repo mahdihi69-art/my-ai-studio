@@ -78,6 +78,28 @@ public class MainActivity extends Activity {
         scroll.addView(root); setContentView(scroll);
     }
 
+    void copyJson(){
+        String s=preview.getText().toString();
+        ((android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE))
+            .setPrimaryClip(android.content.ClipData.newPlainText("project",s));
+        status.setText("✅ JSON کپی شد.");
+    }
+
+    void shareJson(){
+        android.content.Intent i=new android.content.Intent(android.content.Intent.ACTION_SEND);
+        i.setType("text/plain");
+        i.putExtra(android.content.Intent.EXTRA_TEXT,preview.getText().toString());
+        startActivity(android.content.Intent.createChooser(i,"اشتراک مشخصات پروژه"));
+    }
+
+    void clearForm(){
+        name.setText(""); purpose.setText(""); inputs.setText(""); outputs.setText("");
+        pages.setText(""); style.setText(""); colors.setText(""); extras.setText("");
+        preview.setText("پیش‌نمایش JSON پروژه اینجا نمایش داده می‌شود.");
+        status.setText("فرم پاک شد.");
+        getSharedPreferences("builder",0).edit().remove("last_spec").apply();
+    }
+
     void generate(){
         try{
             JSONObject o=new JSONObject();
