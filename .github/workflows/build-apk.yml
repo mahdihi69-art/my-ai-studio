@@ -28,6 +28,12 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Prepare stable debug signing
+        run: |
+          mkdir -p build-keys
+          base64 -d build-keys/myai-debug.keystore.b64 > build-keys/myai-debug.keystore
+          test -s build-keys/myai-debug.keystore
+
       - name: Build all APKs
         run: gradle :app:assembleDebug :story:assembleDebug :builder:assembleDebug --no-daemon --stacktrace
 
@@ -38,6 +44,7 @@ jobs:
             test -s "$f"
             $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose "$f"
             echo "VERIFIED: $f ($(stat -c%s "$f") bytes)"
+            $ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$f" | grep -E "package:|sdkVersion|targetSdkVersion"
           done
           echo "Story manifest:"
           $ANDROID_HOME/build-tools/35.0.0/aapt dump badging story/build/outputs/apk/debug/story-debug.apk | grep -E "package:|sdkVersion|targetSdkVersion"
