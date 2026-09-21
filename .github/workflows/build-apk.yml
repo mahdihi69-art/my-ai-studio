@@ -1,4 +1,4 @@
-name: Build Android APKs
+name: Build Story Maker APK
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-story:
     runs-on: ubuntu-latest
     env:
       QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
@@ -28,36 +28,36 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build all APKs
-        run: gradle :app:assembleDebug :story:assembleDebug :builder:assembleDebug --no-daemon --stacktrace
+      - name: Build Story Maker
+        run: gradle :story:assembleDebug --no-daemon --stacktrace
 
-      - name: Verify APKs for broad Android compatibility
+      - name: Verify Story Maker APK
         run: |
           set -euo pipefail
-          for f in app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk builder/build/outputs/apk/debug/builder-debug.apk; do
-            test -s "$f"
-            $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose "$f"
-            echo "VERIFIED: $f ($(stat -c%s "$f") bytes)"
-            BADGING=$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$f")
-            echo "$BADGING" | grep -E "package:|sdkVersion|targetSdkVersion"
-            if echo "$BADGING" | grep -q "testOnly='true'"; then echo "ERROR: testOnly=true"; exit 1; fi
-          done
-          echo "Story manifest:"
-          $ANDROID_HOME/build-tools/35.0.0/aapt dump badging story/build/outputs/apk/debug/story-debug.apk | grep -E "package:|sdkVersion|targetSdkVersion"
+          APK="story/build/outputs/apk/debug/story-debug.apk"
+          test -s "$APK"
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose "$APK"
+          BADGING=$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$APK")
+          echo "$BADGING"
+          echo "$BADGING" | grep "package: name='com.mahdihi69.storymaker'"
+          echo "$BADGING" | grep "sdkVersion:'23'"
+          echo "$BADGING" | grep "targetSdkVersion:'31'"
+          if echo "$BADGING" | grep -q "testOnly='true'"; then
+            echo "ERROR: testOnly=true"
+            exit 1
+          fi
+          echo "STORY_APK_OK size=$(stat -c%s "$APK") bytes"
 
-      - name: Upload APKs
+      - name: Upload Story Maker APK
         uses: actions/upload-artifact@v4
         with:
-          name: android-apks-final
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            story/build/outputs/apk/debug/story-debug.apk
-            builder/build/outputs/apk/debug/builder-debug.apk
+          name: story-maker-apk
+          path: story/build/outputs/apk/debug/story-debug.apk
           if-no-files-found: error
 
-      - name: Publish APK release
+      - name: Publish Story Maker release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="v2.3.${{ github.run_number }}"
-          gh release create "$TAG" app/build/outputs/apk/debug/app-debug.apk story/build/outputs/apk/debug/story-debug.apk builder/build/outputs/apk/debug/builder-debug.apk --title "Android APKs $TAG" --generate-notes
+          TAG="story-v2.2.${{ github.run_number }}"
+          gh release create "$TAG" story/build/outputs/apk/debug/story-debug.apk             --title "داستان‌ساز $TAG" --generate-notes
