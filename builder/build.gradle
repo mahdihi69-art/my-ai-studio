@@ -4,11 +4,11 @@ android {
     namespace 'com.mahdihi69.builder'
     compileSdk 35
     defaultConfig {
-        applicationId "com.mahdihi69.builder"
+        applicationId "com.mahdihi69.programbuilder"
         minSdk 23
-        targetSdk 35
-        versionCode 2
-        versionName '2.0.0'
+        targetSdk 31
+        versionCode 3
+        versionName '2.1.0'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
