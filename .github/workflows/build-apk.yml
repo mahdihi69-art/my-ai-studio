@@ -14,6 +14,7 @@ jobs:
     env:
       QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       AVALAI_API_KEY: ${{ secrets.AVALAI_API_KEY }}
     steps:
       - name: Checkout
@@ -60,5 +61,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="story-v2.7.${{ github.run_number }}"
+          TAG="story-v2.8.${{ github.run_number }}"
           gh release create "$TAG" story/build/outputs/apk/debug/story-debug.apk             --title "داستان‌ساز $TAG" --generate-notes
