@@ -142,7 +142,7 @@ public class MainActivity extends Activity {
         sc.addView(box); root.addView(sc,new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
 
         loadLast();
-        new Handler(getMainLooper()).postDelayed(()->{initTts();initSpeech();},700);
+        new Handler(getMainLooper()).postDelayed(()->{initTts();initSpeech();initOfflineVoice();},700);
 
         gen.setOnClickListener(v->generate());
         vb.setOnClickListener(v->toggleVoice());
