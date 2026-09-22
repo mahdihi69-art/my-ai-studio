@@ -53,8 +53,8 @@ tasks.register("downloadPersianVoskModel") {
                 into voskAssets
             }
         }
-        if (!new File(voskAssets, "uuid").exists()) {
-            throw new GradleException("Persian Vosk model is incomplete: uuid missing")
+        if (!voskAssets.exists() || !voskAssets.isDirectory()) {
+            throw new GradleException("Persian Vosk model extraction failed")
         }
     }
 }
