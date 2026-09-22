@@ -12,8 +12,8 @@ android {
         applicationId "com.mahdihi69.storymaker"
         minSdk 23
         targetSdk 31
-        versionCode 21
-        versionName '2.5.1'
+        versionCode 22
+        versionName '2.6.0'
         buildConfigField 'String', 'QWEN_API_KEY', '"' + esc(qwenKey) + '"'
         buildConfigField 'String', 'DEEPSEEK_API_KEY', '"' + esc(deepseekKey) + '"'
         buildConfigField 'String', 'AVALAI_API_KEY', '"' + esc(avalaiKey) + '"'
@@ -26,5 +26,31 @@ android {
 }
 
 dependencies {
+    implementation 'com.alphacephei:vosk-android:0.3.75'
 }
 
+def voskZip = file("${buildDir}/vosk/fa.zip")
+def voskAssets = file("${projectDir}/src/main/assets/vosk-model-small-fa-0.4")
+tasks.register("downloadPersianVoskModel") {
+    outputs.dir(voskAssets)
+    doLast {
+        if (voskAssets.exists() && new File(voskAssets, "conf").exists()) return
+        delete(voskAssets)
+        voskAssets.parentFile.mkdirs()
+        voskZip.parentFile.mkdirs()
+        if (!voskZip.exists()) {
+            new URL("https://alphacephei.com/vosk/models/vosk-model-small-fa-0.4.zip").withInputStream { input ->
+                voskZip.withOutputStream { output -> output << input }
+            }
+        }
+        def unpackRoot = file("${buildDir}/vosk/unpacked")
+        delete(unpackRoot)
+        unpackRoot.mkdirs()
+        copy { from zipTree(voskZip); into unpackRoot }
+        def extracted = file("${unpackRoot}/vosk-model-small-fa-0.4")
+        if (!extracted.exists()) throw new GradleException("Persian Vosk model folder not found after extraction")
+        copy { from extracted; into voskAssets }
+        if (!new File(voskAssets, "conf").exists()) throw new GradleException("Persian Vosk model extraction failed")
+    }
+}
+tasks.named("preBuild").configure { dependsOn("downloadPersianVoskModel") }
