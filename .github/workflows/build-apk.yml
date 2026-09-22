@@ -41,9 +41,9 @@ jobs:
           $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose "$APK"
           BADGING=$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$APK")
           echo "$BADGING"
-          echo "$BADGING" | grep "package: name='com.mahdihi69.storymaker'"
+          echo "$BADGING" | grep "package: name='com.mahdihi69.storymaker.v30'"
           echo "$BADGING" | grep "sdkVersion:'23'"
-          echo "$BADGING" | grep "targetSdkVersion:'31'"
+          echo "$BADGING" | grep "targetSdkVersion:'35'"
           if echo "$BADGING" | grep -q "testOnly='true'"; then
             echo "ERROR: testOnly=true"
             exit 1
@@ -61,5 +61,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="story-v2.8.${{ github.run_number }}"
+          TAG="story-v3.0.${{ github.run_number }}"
           gh release create "$TAG" story/build/outputs/apk/debug/story-debug.apk             --title "داستان‌ساز $TAG" --generate-notes
