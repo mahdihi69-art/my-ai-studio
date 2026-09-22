@@ -184,8 +184,8 @@ public class MainActivity extends Activity { // Story Maker production build
         .setNegativeButton("لغو",null).setPositiveButton("پاک کن",(d,w)->{output.setText("اینجا داستان شما ساخته می‌شود…");status.setText("پاک شد");}).show(); }
 
     void showLibrary(){
-        JSONArray a; try{a=new JSONArray(prefs.getString("library","[]"));}catch(Exception e){a=new JSONArray();}
-        final JSONArray libraryArray = a;
+        JSONArray tmp; try{tmp=new JSONArray(prefs.getString("library","[]"));}catch(Exception e){tmp=new JSONArray();}
+        final JSONArray libraryArray = tmp;
         if(libraryArray.length()==0){new AlertDialog.Builder(this).setTitle("📚 کتابخانه").setMessage("هنوز داستانی ذخیره نشده است.").setPositiveButton("باشه",null).show();return;}
         String[] titles=new String[libraryArray.length()];
         for(int i=0;i<libraryArray.length();i++)try{titles[i]=libraryArray.getJSONObject(libraryArray.length()-1-i).optString("title","داستان");}catch(Exception e){titles[i]="داستان";}
