@@ -104,10 +104,10 @@ public class MainActivity extends Activity { // Story Maker production build
         add(box,"📏 اندازه داستان",length);
 
         provider=new Spinner(this); provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,
-                new String[]{"خودکار — پل هوشمند","Qwen — مستقیم","DeepSeek — مستقیم","AvalAI — مسیر ایران"}));
+                new String[]{"خودکار — پل هوشمند","Qwen — مستقیم","DeepSeek — مستقیم","Gemini — مستقیم","AvalAI — مسیر ایران"}));
         add(box,"🧠 انتخاب اتصال هوش مصنوعی",provider);
         modelChoice=new Spinner(this); modelChoice.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,
-                new String[]{"Qwen Max — خلاقیت","DeepSeek V4 Flash — استدلال","GPT-5.4 — از مسیر AvalAI","Claude Sonnet 4.6 — از مسیر AvalAI","Gemini 2.5 Pro — از مسیر AvalAI"}));
+                new String[]{"Qwen Max — خلاقیت","DeepSeek Flash — استدلال","Gemini 2.5 Pro — مستقیم","GPT-5.4 — از مسیر AvalAI","Claude Sonnet 4.6 — از مسیر AvalAI"}));
         add(box,"🤖 مدل مورد استفاده",modelChoice);
 
         poem=new CheckBox(this); poem.setText("🎵 شعر کوتاه و تازه هم داخل داستان باشد"); box.addView(poem);
@@ -212,6 +212,7 @@ public class MainActivity extends Activity { // Story Maker production build
 
     String qkey(){return BuildConfig.QWEN_API_KEY==null?"":BuildConfig.QWEN_API_KEY.trim();}
     String dkey(){return BuildConfig.DEEPSEEK_API_KEY==null?"":BuildConfig.DEEPSEEK_API_KEY.trim();}
+    String gkey(){return BuildConfig.GEMINI_API_KEY==null?"":BuildConfig.GEMINI_API_KEY.trim();}
     String akey(){return BuildConfig.AVALAI_API_KEY==null?"":BuildConfig.AVALAI_API_KEY.trim();}
 
     String storyPrompt(String t){
@@ -230,7 +231,9 @@ public class MainActivity extends Activity { // Story Maker production build
             model="qwen-max-latest";
         } else if(name.equals("DeepSeek")){
             key=dkey(); url="https://api.deepseek.com/chat/completions";
-            model="deepseek-v4-flash";
+            model="deepseek-flash";
+        } else if(name.equals("Gemini")) {
+            return geminiCall(prompt);
         } else {
             key=akey();
             url="https://api.avalai.ir/v1/chat/completions";
@@ -250,13 +253,39 @@ public class MainActivity extends Activity { // Story Maker production build
         return s;
     }
 
+
+    String geminiCall(String prompt)throws Exception{
+        String key=gkey();
+        if(key.isEmpty()) throw new IOException("Gemini key missing");
+        String model="gemini-2.5-pro";
+        String url="https://generativelanguage.googleapis.com/v1beta/models/"+model+":generateContent?key="+URLEncoder.encode(key,"UTF-8");
+        JSONObject part=new JSONObject().put("text",prompt);
+        JSONArray parts=new JSONArray().put(part);
+        JSONObject user=new JSONObject().put("role","user").put("parts",parts);
+        JSONArray contents=new JSONArray().put(user);
+        JSONObject gen=new JSONObject().put("temperature",1.0).put("maxOutputTokens",7000);
+        JSONObject body=new JSONObject().put("contents",contents).put("generationConfig",gen);
+        String r=postNoAuth(url,body.toString());
+        JSONObject root=new JSONObject(r);
+        JSONArray candidates=root.optJSONArray("candidates");
+        if(candidates==null||candidates.length()==0) throw new IOException("Gemini empty response");
+        JSONObject content=candidates.getJSONObject(0).optJSONObject("content");
+        if(content==null) throw new IOException("Gemini missing content");
+        JSONArray pp=content.optJSONArray("parts");
+        StringBuilder out=new StringBuilder();
+        if(pp!=null) for(int i=0;i<pp.length();i++) out.append(pp.getJSONObject(i).optString("text",""));
+        if(out.toString().trim().isEmpty()) throw new IOException("Gemini empty text");
+        return out.toString().trim();
+    }
+
     String generateWithBridge(String prompt)throws Exception{
         String selected=String.valueOf(provider.getSelectedItem());
         ArrayList<String> order=new ArrayList<>();
         if(selected.startsWith("Qwen")) order.add("Qwen");
         else if(selected.startsWith("DeepSeek")) order.add("DeepSeek");
+        else if(selected.startsWith("Gemini")) order.add("Gemini");
         else if(selected.startsWith("AvalAI")) order.add("AvalAI");
-        else { order.add("AvalAI"); order.add("DeepSeek"); order.add("Qwen"); }
+        else { order.add("Gemini"); order.add("AvalAI"); order.add("DeepSeek"); order.add("Qwen"); }
         Exception last=null;
         for(String p:order)try{
             runOnUiThread(()->status.setText("🔗 اتصال "+p+" در حال پاسخ‌گویی…"));
@@ -381,6 +410,18 @@ public class MainActivity extends Activity { // Story Maker production build
         byte[] a=bytes("https://api.avalai.ir/v1/audio/speech",k,b.toString());File f=new File(getCacheDir(),"story_voice.mp3");
         try(FileOutputStream o=new FileOutputStream(f)){o.write(a);}runOnUiThread(()->play(f));return;
     }catch(Exception ignored){}runOnUiThread(()->nativeSpeak(text));});else nativeSpeak(text);}
+
+    String postNoAuth(String u,String d)throws Exception{
+        HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();
+        c.setRequestMethod("POST"); c.setConnectTimeout(15000); c.setReadTimeout(90000); c.setDoOutput(true);
+        c.setRequestProperty("Content-Type","application/json");
+        try(OutputStream o=c.getOutputStream()){o.write(d.getBytes(StandardCharsets.UTF_8));}
+        int code=c.getResponseCode();
+        InputStream in=code>=200&&code<300?c.getInputStream():c.getErrorStream();
+        String r=read(in); c.disconnect();
+        if(code<200||code>=300)throw new IOException("HTTP "+code);
+        return r;
+    }
     String post(String u,String k,String d)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setRequestMethod("POST");c.setConnectTimeout(15000);c.setReadTimeout(90000);c.setDoOutput(true);c.setRequestProperty("Content-Type","application/json");c.setRequestProperty("Authorization","Bearer "+k);try(OutputStream o=c.getOutputStream()){o.write(d.getBytes(StandardCharsets.UTF_8));}int code=c.getResponseCode();InputStream in=code>=200&&code<300?c.getInputStream():c.getErrorStream();String r=read(in);c.disconnect();if(code<200||code>=300)throw new IOException();return r;}
     byte[] bytes(String u,String k,String d)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setRequestMethod("POST");c.setConnectTimeout(15000);c.setReadTimeout(60000);c.setDoOutput(true);c.setRequestProperty("Content-Type","application/json");c.setRequestProperty("Authorization","Bearer "+k);try(OutputStream o=c.getOutputStream()){o.write(d.getBytes(StandardCharsets.UTF_8));}int code=c.getResponseCode();if(code<200||code>=300)throw new IOException();InputStream in=c.getInputStream();ByteArrayOutputStream o=new ByteArrayOutputStream();byte[] z=new byte[8192];int n;while((n=in.read(z))!=-1)o.write(z,0,n);in.close();c.disconnect();return o.toByteArray();}
     String read(InputStream in)throws Exception{BufferedReader r=new BufferedReader(new InputStreamReader(in,StandardCharsets.UTF_8));StringBuilder s=new StringBuilder();String z;while((z=r.readLine())!=null)s.append(z);return s.toString();}
