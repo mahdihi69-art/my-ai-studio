@@ -307,26 +307,23 @@ public class MainActivity extends Activity { // Story Maker production build
         if(t.isEmpty()){status.setText("موضوع را وارد کنید یا موضوع شانسی بگیرید");return;}
         String engine=String.valueOf(provider.getSelectedItem());
         if(engine.contains("آفلاین")){status.setText("🪄 ساخت داستان آفلاین…");localStory(t);return;}
-        final String key=engine.contains("DeepSeek")?dkey():qkey();
-        if(key.isEmpty()){status.setText("کلید این موتور در نسخه آزمایشی تنظیم نشده؛ نسخه آفلاین اجرا شد");localStory(t);return;}
-        status.setText("🧠 "+engine+" در حال نوشتن است…");
-        String p="یک داستان کاملاً جدید و غیرتکراری فارسی برای کتاب صوتی بنویس. موضوع: "+t+
-        ". شخصیت‌ها: "+chars.getText()+". ژانر: "+genre.getSelectedItem()+". سن: "+age.getSelectedItem()+
-        ". طول: "+length.getSelectedItem()+". پند: "+lesson.getText()+". پایان: "+ending.getText()+
-        ". "+(poem.isChecked()?"یک شعر کوتاه کاملاً جدید و مرتبط داخل داستان بیاور. ":"")+
-        "شروع داستان باید قوی باشد، شخصیت‌ها هدف و ویژگی داشته باشند، گفت‌وگو طبیعی باشد، حداقل دو اتفاق مهم و یک نقطه عطف داشته باشد و پایان مشخص و رضایت‌بخش باشد. فقط متن نهایی داستان را برگردان.";
-        final String endpoint=engine.contains("DeepSeek")?"https://api.deepseek.com/chat/completions":"https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";
-        final String model=engine.contains("DeepSeek")?"deepseek-chat":"qwen3.7-plus";
-        net.execute(()->{try{
-            JSONObject body=new JSONObject().put("model",model).put("temperature",1.1).put("max_tokens",6500);
-            JSONArray m=new JSONArray();
-            m.put(new JSONObject().put("role","system").put("content","فقط فارسی بنویس. خلاق، منسجم و غیرتکراری باش."));
-            m.put(new JSONObject().put("role","user").put("content",p)); body.put("messages",m);
-            String r=post(endpoint,key,body.toString());
-            String s=new JSONObject(r).getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content","").trim();
-            if(s.isEmpty())throw new IOException();
-            runOnUiThread(()->{output.setText(s);prefs.edit().putString("last",s).apply();status.setText("✅ داستان با "+engine+" آماده شد");if(voiceMode)speak(s);});
-        }catch(Exception e){runOnUiThread(()->{status.setText("⚠️ اتصال ناموفق؛ نسخه آفلاین اجرا شد");localStory(t);});}});
+        status.setText("🔗 پل هوشمند در حال انتخاب بهترین اتصال…");
+        final String prompt=storyPrompt(t);
+        net.execute(()->{
+            try{
+                String s=generateWithBridge(prompt);
+                runOnUiThread(()->{
+                    output.setText(s);
+                    prefs.edit().putString("last",s).apply();
+                    if(voiceMode)speak(s);
+                });
+            }catch(Exception e){
+                runOnUiThread(()->{
+                    status.setText("⚠️ همه اتصال‌های آنلاین ناموفق بودند؛ نسخه آفلاین اجرا شد");
+                    localStory(t);
+                });
+            }
+        });
     }
 
     void localStory(String t){
