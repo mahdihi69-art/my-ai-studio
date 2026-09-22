@@ -4,6 +4,7 @@ def qwenKey = System.getenv("QWEN_API_KEY") ?: ""
 def deepseekKey = System.getenv("DEEPSEEK_API_KEY") ?: ""
 def geminiKey = System.getenv("GEMINI_API_KEY") ?: ""
 def avalaiKey = System.getenv("AVALAI_API_KEY") ?: ""
+def deepseekKey = System.getenv("DEEPSEEK_API_KEY") ?: ""
 def esc = { String s -> s.replace('\\', '\\\\').replace('"', '\\"') }
 
 android {
