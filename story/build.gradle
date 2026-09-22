@@ -12,8 +12,8 @@ android {
         applicationId "com.mahdihi69.storymaker"
         minSdk 23
         targetSdk 31
-        versionCode 20
-        versionName '2.5.0'
+        versionCode 21
+        versionName '2.5.1'
         buildConfigField 'String', 'QWEN_API_KEY', '"' + esc(qwenKey) + '"'
         buildConfigField 'String', 'DEEPSEEK_API_KEY', '"' + esc(deepseekKey) + '"'
         buildConfigField 'String', 'AVALAI_API_KEY', '"' + esc(avalaiKey) + '"'
@@ -25,37 +25,5 @@ android {
     }
 }
 
-
 dependencies {
-    implementation 'com.alphacephei:vosk-android:0.3.75'
 }
-
-def voskZip = file("${buildDir}/vosk/fa.zip")
-def voskAssets = file("${projectDir}/src/main/assets/vosk-model-small-fa-0.4")
-tasks.register("downloadPersianVoskModel") {
-    outputs.dir(voskAssets)
-    doLast {
-        if (!voskAssets.exists()) {
-            voskAssets.parentFile.mkdirs()
-            voskZip.parentFile.mkdirs()
-            if (!voskZip.exists()) {
-                new URL("https://alphacephei.com/vosk/models/vosk-model-small-fa-0.4.zip").withInputStream { i ->
-                    voskZip.withOutputStream { o -> o << i }
-                }
-            }
-            copy {
-                from zipTree(voskZip)
-                into project.layout.buildDirectory.dir("vosk/unpacked")
-            }
-            def unpacked = file("${buildDir}/vosk/unpacked/vosk-model-small-fa-0.4")
-            copy {
-                from unpacked
-                into voskAssets
-            }
-        }
-        if (!voskAssets.exists() || !voskAssets.isDirectory()) {
-            throw new GradleException("Persian Vosk model extraction failed")
-        }
-    }
-}
-tasks.named("preBuild").configure { dependsOn("downloadPersianVoskModel") }
