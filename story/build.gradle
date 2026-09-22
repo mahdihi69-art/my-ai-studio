@@ -34,6 +34,29 @@ def voskAssets = file("${projectDir}/src/main/assets/vosk-model-small-fa-0.4")
 tasks.register("downloadPersianVoskModel") {
     outputs.dir(voskAssets)
     doLast {
+        if (!voskAssets.exists()) {
+            voskAssets.parentFile.mkdirs()
+            voskZip.parentFile.mkdirs()
+            if (!voskZip.exists()) {
+                new URL("https://alphacephei.com/vosk/models/vosk-model-small-fa-0.4.zip").withInputStream { i ->
+                    voskZip.withOutputStream { o -> o << i }
+                }
+            }
+            copy {
+                from zipTree(voskZip)
+                into project.layout.buildDirectory.dir("vosk/unpacked")
+            }
+            def unpacked = file("${buildDir}/vosk/unpacked/vosk-model-small-fa-0.4")
+            copy { from unpacked; into voskAssets }
+        }
+    }
+}
+tasks.named("preBuild").configure { dependsOn("downloadPersianVoskModel") }
+def voskZip = file("${buildDir}/vosk/fa.zip")
+def voskAssets = file("${projectDir}/src/main/assets/vosk-model-small-fa-0.4")
+tasks.register("downloadPersianVoskModel") {
+    outputs.dir(voskAssets)
+    doLast {
         if (voskAssets.exists() && new File(voskAssets, "conf").exists()) return
         delete(voskAssets)
         voskAssets.parentFile.mkdirs()
