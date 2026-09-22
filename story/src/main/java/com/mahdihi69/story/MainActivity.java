@@ -18,7 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity { // Story Maker production build
     EditText topic, chars, lesson, ending;
     Spinner genre, age, length, provider, modelChoice;
     CheckBox poem;
