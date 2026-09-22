@@ -95,10 +95,6 @@ public class MainActivity extends Activity { // Story Maker production build
                 new String[]{"ماجراجویی","فانتزی","آموزشی","طنز","اخلاقی","علمی-تخیلی","احساسی","رازآلود","حماسی","معمایی","دوستی","محیط‌زیستی"}));
         add(box,"🎭 ژانر",genre);
 
-        provider=new Spinner(this); provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,
-                new String[]{"⚡ Qwen","🧠 DeepSeek","🪄 آفلاین"}));
-        add(box,"🤖 موتور هوش مصنوعی",provider);
-
         age=new Spinner(this); age.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,
                 new String[]{"کودک ۴ تا ۷ سال","کودک ۸ تا ۱۲ سال","نوجوان","جوان","بزرگسال","خانوادگی"}));
         add(box,"👶 رده سنی",age);
@@ -209,7 +205,7 @@ public class MainActivity extends Activity { // Story Maker production build
         topic.setText(t[new Random().nextInt(t.length)]); status.setText("🎲 موضوع تازه انتخاب شد");
     }
     void bedtimeMode(){
-        genre.setSelection(7); age.setSelection(0); length.setSelection(1); poem.setChecked(false);
+        genre.setSelection(1); age.setSelection(0); length.setSelection(1); poem.setChecked(false);
         topic.setText("یک قصه آرام و شیرین برای قبل از خواب درباره دوستی و یک اتفاق جادویی");
         lesson.setText("مهربانی، شجاعت و اعتماد به خود");
         ending.setText("پایانی آرام، امیدبخش و مناسب خواب کودک");
