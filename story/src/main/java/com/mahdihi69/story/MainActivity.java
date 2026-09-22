@@ -17,10 +17,6 @@ import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
-import org.vosk.Model;
-import org.vosk.Recognizer;
-import org.vosk.android.SpeechService;
-import org.vosk.android.StorageService;
 
 public class MainActivity extends Activity {
     EditText topic, chars, lesson, ending;
@@ -31,9 +27,7 @@ public class MainActivity extends Activity {
     SpeechRecognizer rec;
     MediaPlayer player;
     boolean ttsReady=false, voiceMode=false, voskReady=false;
-    Model voskModel;
-    SpeechService voskService;
-    final ExecutorService net=Executors.newSingleThreadExecutor();
+        final ExecutorService net=Executors.newSingleThreadExecutor();
     static final int PICK=31;
     android.content.SharedPreferences prefs;
 
@@ -148,7 +142,7 @@ public class MainActivity extends Activity {
         sc.addView(box); root.addView(sc,new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
 
         loadLast();
-        new Handler(getMainLooper()).postDelayed(()->{initTts();initSpeech();initOfflineVoice();},700);
+        new Handler(getMainLooper()).postDelayed(()->{initTts();initSpeech();},700);
 
         gen.setOnClickListener(v->generate());
         vb.setOnClickListener(v->toggleVoice());
