@@ -194,8 +194,9 @@ public class MainActivity extends Activity { // Story Maker production build
         if(a.length()==0){new AlertDialog.Builder(this).setTitle("📚 کتابخانه").setMessage("هنوز داستانی ذخیره نشده است.").setPositiveButton("باشه",null).show();return;}
         String[] titles=new String[a.length()];
         for(int i=0;i<a.length();i++)try{titles[i]=a.getJSONObject(a.length()-1-i).optString("title","داستان");}catch(Exception e){titles[i]="داستان";}
+        final JSONArray libraryData=a;
         new AlertDialog.Builder(this).setTitle("📚 داستان‌های ذخیره‌شده").setItems(titles,(d,which)->{
-            try{JSONObject o=a.getJSONObject(a.length()-1-which);topic.setText(o.optString("title"));output.setText(o.optString("text"));status.setText("📖 داستان از کتابخانه باز شد");}catch(Exception ignored){}
+            try{JSONObject o=libraryData.getJSONObject(libraryData.length()-1-which);topic.setText(o.optString("title"));output.setText(o.optString("text"));status.setText("📖 داستان از کتابخانه باز شد");}catch(Exception ignored){}
         }).setNegativeButton("بستن",null).show();
     }
     void updateLibraryInfo(){
