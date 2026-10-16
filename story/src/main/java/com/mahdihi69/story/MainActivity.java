@@ -12,10 +12,6 @@ import android.speech.tts.TextToSpeech;
 import android.view.*;
 import android.widget.*;
 import org.json.*;
-import org.vosk.Model;
-import org.vosk.Recognizer;
-import org.vosk.android.SpeechService;
-import org.vosk.android.StorageService;
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
@@ -30,9 +26,7 @@ public class MainActivity extends Activity { // Story Maker production build
     TextToSpeech nativeTts;
     SpeechRecognizer rec;
     MediaPlayer player;
-    boolean ttsReady=false, voiceMode=false, voskReady=false;
-    Model voskModel;
-    SpeechService voskService;
+    boolean ttsReady=false, voiceMode=false;
         final ExecutorService net=Executors.newSingleThreadExecutor();
     static final int PICK=31;
     android.content.SharedPreferences prefs;
@@ -148,7 +142,7 @@ public class MainActivity extends Activity { // Story Maker production build
         sc.addView(box); root.addView(sc,new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
 
         loadLast();
-        new Handler(getMainLooper()).postDelayed(()->{initTts();initSpeech();initOfflineVoice();},700);
+        new Handler(getMainLooper()).postDelayed(()->{initTts();initSpeech();},700);
 
         gen.setOnClickListener(v->generate());
         vb.setOnClickListener(v->toggleVoice());
@@ -303,7 +297,7 @@ public class MainActivity extends Activity { // Story Maker production build
         String t=topic.getText().toString().trim();
         if(t.isEmpty()){status.setText("موضوع را وارد کنید یا موضوع شانسی بگیرید");return;}
         String engine=String.valueOf(provider.getSelectedItem());
-        if(engine.contains("آفلاین")){status.setText("🪄 ساخت داستان آفلاین…");localStory(t);return;}
+        
         status.setText("🔗 پل هوشمند در حال انتخاب بهترین اتصال…");
         final String prompt=storyPrompt(t);
         net.execute(()->{
@@ -316,8 +310,7 @@ public class MainActivity extends Activity { // Story Maker production build
                 });
             }catch(Exception e){
                 runOnUiThread(()->{
-                    status.setText("⚠️ همه اتصال‌های آنلاین ناموفق بودند؛ نسخه آفلاین اجرا شد");
-                    localStory(t);
+                    status.setText("❌ اتصال آنلاین ناموفق بود. اینترنت و کلیدهای اتصال را بررسی کنید؛ داستان آفلاین هنوز فعال نشده است.");
                 });
             }
         });
@@ -357,48 +350,13 @@ public class MainActivity extends Activity { // Story Maker production build
         public void onPartialResults(Bundle b){} public void onEvent(int e,Bundle b){}
     });}catch(Exception ignored){}}
 
-    void initOfflineVoice(){
-        if(Build.VERSION.SDK_INT>=23 && checkSelfPermission("android.permission.RECORD_AUDIO")!=android.content.pm.PackageManager.PERMISSION_GRANTED){
-            requestPermissions(new String[]{"android.permission.RECORD_AUDIO"},77); return;
-        }
-        try{
-            StorageService.unpack(this,"vosk-model-small-fa-0.4","story-vosk-model",
-                m->{voskModel=m;voskReady=true;status.setText("🎙️ فرمان صوتی آفلاین فارسی آماده است");},
-                e->{voskReady=false;status.setText("🎙️ حالت صوتی اینترنتی آماده است");});
-        }catch(Exception e){voskReady=false;}
-    }
-
-    void startVosk(){
-        if(!voskReady||voskModel==null){listen();return;}
-        try{
-            if(voskService!=null){voskService.stop();voskService.shutdown();voskService=null;}
-            Recognizer rr=new Recognizer(voskModel,16000.0f);
-            voskService=new SpeechService(rr,16000.0f);
-            voskService.startListening(new org.vosk.android.RecognitionListener(){
-                public void onPartialResult(String s){}
-                public void onResult(String s){handleVoskJson(s,false);}
-                public void onFinalResult(String s){handleVoskJson(s,true);}
-                public void onError(Exception e){if(voiceMode)new Handler(getMainLooper()).postDelayed(()->startVosk(),500);}
-                public void onTimeout(){if(voiceMode)new Handler(getMainLooper()).postDelayed(()->startVosk(),300);}
-            });
-            status.setText("🎙️ گوش می‌دهم — بدون اینترنت");
-        }catch(Exception e){listen();}
-    }
-
-    void handleVoskJson(String json,boolean fin){
-        try{
-            String s=new JSONObject(json).optString(fin?"text":"partial","").trim();
-            if(fin&&s.length()>1){voiceCommand(s); if(voiceMode)new Handler(getMainLooper()).postDelayed(()->startVosk(),700);}
-        }catch(Exception ignored){}
-    }
-
     void toggleVoice(){
         voiceMode=!voiceMode;
         if(voiceMode){
-            status.setText(voskReady?"🎙️ فرمان صوتی آفلاین فارسی فعال شد":"🎙️ فرمان صوتی فعال شد");
-            if(voskReady)startVosk();else listen();
+            if(rec==null){status.setText("تشخیص گفتار روی این گوشی در دسترس نیست؛ سرویس گفتار آنلاین را بررسی کنید.");voiceMode=false;return;}
+            status.setText("🎙️ فرمان صوتی آنلاین فارسی فعال شد");
+            listen();
         }else{
-            if(voskService!=null){try{voskService.stop();voskService.shutdown();}catch(Exception ignored){}voskService=null;}
             if(rec!=null)rec.cancel();
             status.setText("⏹️ دستیار صوتی خاموش شد");
         }
@@ -441,5 +399,5 @@ public class MainActivity extends Activity { // Story Maker production build
     void stopAudio(){if(player!=null){try{player.stop();}catch(Exception ignored){}player.release();player=null;}if(nativeTts!=null)nativeTts.stop();}
     void setBg(Uri u){try{InputStream in=getContentResolver().openInputStream(u);Bitmap b=BitmapFactory.decodeStream(in);if(in!=null)in.close();if(b==null)return;getWindow().getDecorView().setBackground(new android.graphics.drawable.BitmapDrawable(getResources(),b));}catch(Exception ignored){}}
     @Override protected void onActivityResult(int r,int c,Intent d){super.onActivityResult(r,c,d);if(r==PICK&&c==RESULT_OK&&d!=null)setBg(d.getData());}
-    @Override protected void onDestroy(){voiceMode=false;if(rec!=null)rec.destroy();if(nativeTts!=null)nativeTts.shutdown();if(voskService!=null){try{voskService.stop();voskService.shutdown();}catch(Exception ignored){}} if(voskModel!=null){try{voskModel.close();}catch(Exception ignored){}} if(player!=null)player.release();net.shutdownNow();super.onDestroy();}
+    @Override protected void onDestroy(){voiceMode=false;if(rec!=null)rec.destroy();if(nativeTts!=null)nativeTts.shutdown();if(player!=null)player.release();net.shutdownNow();super.onDestroy();}
 }
