@@ -11,6 +11,7 @@ permissions:
 jobs:
   build-story:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
@@ -56,6 +57,7 @@ jobs:
           name: story-maker-apk
           path: story/build/outputs/apk/debug/story-debug.apk
           if-no-files-found: error
+          retention-days: 14
 
       - name: Publish Story Maker release
         env:
