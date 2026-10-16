@@ -20,7 +20,7 @@ import java.util.concurrent.*;
 
 public class MainActivity extends Activity { // Story Maker production build
     EditText topic, chars, lesson, ending;
-    Spinner genre, age, length, provider, modelChoice;
+    Spinner genre, age, length, provider, modelChoice, storyType;
     CheckBox poem;
     TextView output, status, libraryInfo;
     TextToSpeech nativeTts;
@@ -83,7 +83,11 @@ public class MainActivity extends Activity { // Story Maker production build
         chars=ed("نام شخصیت‌ها (اختیاری)");
         lesson=ed("پند یا آموزش (اختیاری)");
         ending=ed("پایان یا نتیجه دلخواه (اختیاری)");
-        add(box,"🎯 موضوع",topic); add(box,"🧑‍🤝‍🧑 شخصیت‌ها",chars);
+        add(box,"🎯 موضوع",topic);
+        storyType=new Spinner(this); storyType.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"داستان واقع‌گرایانه (تخیلی اما باورپذیر)","داستان واقعی و مستند (اتفاقات واقعی با منابع)"}));
+        add(box,"📚 نوع داستان",storyType);
+        add(box,"🧑‍🤝‍🧑 شخصیت‌ها",chars);
 
         genre=new Spinner(this); genre.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,
                 new String[]{"ماجراجویی","فانتزی","آموزشی","طنز","اخلاقی","علمی-تخیلی","احساسی","رازآلود","حماسی","معمایی","دوستی","محیط‌زیستی"}));
@@ -212,11 +216,22 @@ public class MainActivity extends Activity { // Story Maker production build
     String akey(){return BuildConfig.AVALAI_API_KEY==null?"":BuildConfig.AVALAI_API_KEY.trim();}
 
     String storyPrompt(String t){
-        return "یک داستان کاملاً جدید و غیرتکراری فارسی برای کتاب صوتی بنویس. موضوع: "+t+
+        boolean factual=storyType!=null && storyType.getSelectedItemPosition()==1;
+        String base="موضوع یا رویداد: "+t+". رده سنی: "+age.getSelectedItem()+". طول: "+length.getSelectedItem()+". ";
+        if(factual){
+            return "نقش تو نویسنده مستند و دقیق است. یک روایت فارسی جذاب درباره رویدادهای واقعی و قابل بررسی مرتبط با موضوع زیر تهیه کن. "+base+
+            "مهم: هیچ شخصیت، گفت‌وگو، تاریخ، نقل‌قول یا اتفاقی را جعل نکن. واقعیت مستند را از بازسازی ادبی جدا کن. اگر جزئیات را مطمئن نیستی، صریح بگو نامطمئن است و آن را به‌عنوان واقعیت ننویس. "+
+            "در پایان بخشی با عنوان «منابع برای بررسی» بیاور و فقط منابع واقعی و قابل شناسایی با نام منبع و نشانی اینترنتی دقیق ارائه کن؛ اگر نشانی را نمی‌دانی، لینک نساز و نام منبع را ذکر کن. "+
+            "شخصیت‌های دلخواه کاربر: "+chars.getText()+". پند یا زاویه آموزشی: "+lesson.getText()+". پایان یا نتیجه دلخواه: "+ending.getText()+". "+
+            "اگر موضوع به یک رویداد واقعی مشخص اشاره نمی‌کند یا اطلاعات کافی نداری، به‌جای ساختن واقعیت، روشن کن که برای روایت مستند به انتخاب رویداد یا بررسی منبع نیاز است. "+
+            (poem.isChecked()?"اگر شعر اضافه می‌کنی، آن را واضحاً «شعر ساخته‌شده برای این روایت» بنام و هرگز آن را نقل‌قول تاریخی جا نزن. ":"")+
+            "زبان روان و جذاب باشد، اما دقت تاریخی از هیجان داستان مهم‌تر است.";
+        }
+        return "یک داستان فارسی تازه و واقع‌گرایانه بنویس؛ داستان می‌تواند تخیلی باشد اما رفتار آدم‌ها، علت و معلول اتفاق‌ها و جزئیات زندگی باورپذیر باشند. موضوع: "+t+
         ". شخصیت‌ها: "+chars.getText()+". ژانر: "+genre.getSelectedItem()+". سن: "+age.getSelectedItem()+
         ". طول: "+length.getSelectedItem()+". پند: "+lesson.getText()+". پایان: "+ending.getText()+
-        ". "+(poem.isChecked()?"یک شعر کوتاه کاملاً جدید و مرتبط داخل داستان بیاور. ":"")+
-        "شروع قوی، شخصیت‌پردازی، گفت‌وگوی طبیعی، حداقل دو اتفاق مهم، یک نقطه عطف و پایان رضایت‌بخش داشته باشد. برای کودک ساده و تصویری و برای بزرگسال داستانی‌تر بنویس. فقط متن نهایی داستان را برگردان.";
+        ". "+(poem.isChecked()?"یک شعر کوتاه تازه و مرتبط داخل داستان بیاور. ":"")+
+        "از اتفاقات بی‌منطق، تغییر ناگهانی شخصیت، نتیجه‌گیری شعاری و جمله‌های تکراری پرهیز کن. شخصیت‌پردازی، گفت‌وگوی طبیعی، جزئیات ملموس، چند اتفاق مرتبط و پایان قانع‌کننده داشته باشد. فقط متن نهایی را برگردان.";
     }
 
     String aiCall(String name,String prompt)throws Exception{
@@ -321,6 +336,9 @@ public class MainActivity extends Activity { // Story Maker production build
     }
 
     String makeOfflineStory(String t){
+        if(storyType!=null && storyType.getSelectedItemPosition()==1){
+            return "📚 حالت داستان واقعی و مستند انتخاب شده است.\\n\\nبرای اینکه رویداد، تاریخ، اشخاص و منابع را از خودم نسازم، این حالت بدون اتصال موفق به هوش مصنوعی آنلاین، داستان مستند تولید نمی‌کند.\\n\\nلطفاً اتصال آنلاین را فعال کنید و موضوع مشخص‌تری بنویسید؛ مثلاً نام یک رویداد تاریخی یا شخص واقعی. روایت مستند باید منابع قابل بررسی داشته باشد و هرجا اطلاعات تأیید نشده است، آن را صریح مشخص کند.\\n\\n⚠️ این پیام داستان نیست؛ جلوگیری از ارائه اطلاعات ساختگی است.";
+        }
         String who=chars.getText().toString().trim();
         if(who.isEmpty()) who="آرین و دوستش باران";
         String moral=lesson.getText().toString().trim();
