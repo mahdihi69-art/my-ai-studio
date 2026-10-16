@@ -309,11 +309,57 @@ public class MainActivity extends Activity { // Story Maker production build
                     if(voiceMode)speak(s);
                 });
             }catch(Exception e){
+                final String offline=makeOfflineStory(t);
                 runOnUiThread(()->{
-                    status.setText("❌ اتصال آنلاین ناموفق بود. اینترنت و کلیدهای اتصال را بررسی کنید؛ داستان آفلاین هنوز فعال نشده است.");
+                    output.setText(offline);
+                    prefs.edit().putString("last",offline).apply();
+                    status.setText("⚠️ هوش مصنوعی آنلاین در دسترس نیست؛ داستان آفلاین ساخته شد. برای تولید هوشمند آنلاین باید سرویس سمت سرور تنظیم شود.");
+                    if(voiceMode)speak(offline);
                 });
             }
         });
+    }
+
+    String makeOfflineStory(String t){
+        String who=chars.getText().toString().trim();
+        if(who.isEmpty()) who="آرین و دوستش باران";
+        String moral=lesson.getText().toString().trim();
+        if(moral.isEmpty()) moral="مهربانی، شجاعت و همکاری";
+        String finish=ending.getText().toString().trim();
+        if(finish.isEmpty()) finish="پایانی خوش و امیدبخش";
+        String g=String.valueOf(genre.getSelectedItem());
+        String a=String.valueOf(age.getSelectedItem());
+        boolean child=a.contains("کودک")||a.contains("خانوادگی");
+        String[] starts={
+            "همه‌چیز از یک صبح معمولی شروع شد؛ روزی که هیچ‌کس فکر نمی‌کرد ماجرایی عجیب در انتظارش باشد.",
+            "در جایی دور، میان صداهای آشنا و اتفاق‌های روزمره، رازی کوچک منتظر بود تا کشف شود.",
+            "آن روز، وقتی خورشید از پشت ابرها بیرون آمد، اتفاقی افتاد که مسیر زندگی قهرمان قصه را تغییر داد."
+        };
+        String[] turns={
+            "درست وقتی خیال می‌کردند همه‌چیز حل شده، نشانه‌ای تازه پیدا شد و آن‌ها را با انتخابی دشوار روبه‌رو کرد.",
+            "ناگهان برنامه‌شان به هم خورد؛ اما به‌جای ناامیدی، با دقت به حرف‌های هم گوش دادند و راه تازه‌ای پیدا کردند.",
+            "یک اشتباه کوچک باعث شد مسیر دیگری را امتحان کنند؛ مسیری که چیزی مهم‌تر از پاسخ اولیه به آن‌ها یاد داد."
+        };
+        String[] endings={
+            "آن‌ها فهمیدند که هر مشکل، اگر با فکر و همراهی روبه‌رو شویم، می‌تواند آغاز یک تجربه تازه باشد.",
+            "از آن روز به بعد، هر بار که با دشواری روبه‌رو می‌شدند، به یاد می‌آوردند که امید و همکاری از هر ترسی قوی‌تر است.",
+            "ماجرا تمام شد، اما خاطره‌اش باقی ماند؛ یادگاری از روزی که به آن‌ها نشان داد تغییرهای بزرگ با یک قدم کوچک آغاز می‌شوند."
+        };
+        Random r=new Random();
+        StringBuilder s=new StringBuilder();
+        s.append("«").append(t).append("»\n\n");
+        s.append(starts[r.nextInt(starts.length)]).append("\n\n");
+        s.append("قهرمانان این ماجرا، ").append(who).append("، با شنیدن خبر ").append(t)
+         .append(" تصمیم گرفتند به‌جای تماشا کردن، کاری انجام دهند. ژانر این قصه ").append(g)
+         .append(" بود؛ بنابراین هر قدم، آن‌ها را به تجربه‌ای تازه نزدیک می‌کرد.\n\n");
+        s.append("در آغاز، همه‌چیز ساده به نظر می‌رسید. آن‌ها با هم نقشه‌ای کشیدند، وسایل لازم را آماده کردند و راه افتادند. در طول مسیر با آدم‌ها و نشانه‌هایی روبه‌رو شدند که هرکدام نکته‌ای برای آموختن داشتند. گاهی اختلاف‌نظر پیش می‌آمد، اما هر بار با گفت‌وگو و کمی صبر، راهی برای ادامه پیدا می‌کردند.\n\n");
+        s.append(turns[r.nextInt(turns.length)]).append("\n\n");
+        s.append("این بار ").append(who).append(" به‌جای عجله کردن، به جزئیات توجه کرد. آن‌ها توانستند مسئله را مرحله‌به‌مرحله بررسی کنند، از اشتباهشان درس بگیرند و با کمک یکدیگر راه‌حل مناسبی پیدا کنند. لحظه‌ای که نتیجه تلاششان را دیدند، فهمیدند ارزش ماجرا فقط در رسیدن به مقصد نیست؛ در چیزهایی است که در راه یاد می‌گیریم.\n\n");
+        s.append("در پایان، ").append(finish).append(". ").append(endings[r.nextInt(endings.length)]).append("\n\n");
+        s.append("🌱 پیام داستان: ").append(moral).append(".\n");
+        s.append("— این نسخه به‌صورت آفلاین و الگویی ساخته شده است؛ برای داستان‌پردازی خلاق و اختصاصی، اتصال سرویس هوش مصنوعی آنلاین باید فعال باشد.");
+        if(poem.isChecked()) s.append("\n\n✨ چند سطر برای یادآوری قصه:\nبا مهر و امید، راه پیدا می‌شود\nبا فکر و تلاش، گره وا می‌شود\nاگر کنار هم قدم برداریم\nفردا پر از روشنایی می‌شود");
+        return s.toString();
     }
 
     void initTts(){try{nativeTts=new TextToSpeech(this,x->{if(x==TextToSpeech.SUCCESS){int rr=nativeTts.setLanguage(new Locale("fa","IR"));ttsReady=rr!=TextToSpeech.LANG_MISSING_DATA&&rr!=TextToSpeech.LANG_NOT_SUPPORTED;nativeTts.setSpeechRate(.9f);}});}catch(Exception ignored){}}
