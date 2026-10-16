@@ -227,7 +227,7 @@ public class MainActivity extends Activity { // Story Maker production build
             model="qwen-max-latest";
         } else if(name.equals("DeepSeek")){
             key=dkey(); url="https://api.deepseek.com/chat/completions";
-            model="deepseek-flash";
+            model="deepseek-chat";
         } else if(name.equals("Gemini")) {
             return geminiCall(prompt);
         } else {
@@ -253,7 +253,7 @@ public class MainActivity extends Activity { // Story Maker production build
     String geminiCall(String prompt)throws Exception{
         String key=gkey();
         if(key.isEmpty()) throw new IOException("Gemini key missing");
-        String model="gemini-2.5-pro";
+        String model="gemini-2.5-flash";
         String url="https://generativelanguage.googleapis.com/v1beta/models/"+model+":generateContent?key="+URLEncoder.encode(key,"UTF-8");
         JSONObject part=new JSONObject().put("text",prompt);
         JSONArray parts=new JSONArray().put(part);
@@ -277,11 +277,11 @@ public class MainActivity extends Activity { // Story Maker production build
     String generateWithBridge(String prompt)throws Exception{
         String selected=String.valueOf(provider.getSelectedItem());
         ArrayList<String> order=new ArrayList<>();
-        if(selected.startsWith("Qwen")) order.add("Qwen");
-        else if(selected.startsWith("DeepSeek")) order.add("DeepSeek");
+        if(selected.startsWith("DeepSeek")) order.add("DeepSeek");
+        else if(selected.startsWith("Qwen")) order.add("Qwen");
         else if(selected.startsWith("Gemini")) order.add("Gemini");
         else if(selected.startsWith("AvalAI")) order.add("AvalAI");
-        else { order.add("Gemini"); order.add("AvalAI"); order.add("DeepSeek"); order.add("Qwen"); }
+        else { order.add("DeepSeek"); order.add("Qwen"); order.add("Gemini"); order.add("AvalAI"); }
         Exception last=null;
         for(String p:order)try{
             runOnUiThread(()->status.setText("🔗 اتصال "+p+" در حال پاسخ‌گویی…"));
@@ -316,33 +316,8 @@ public class MainActivity extends Activity { // Story Maker production build
         });
     }
 
-    void localStory(String t){
-        String n=chars.getText().toString().trim(); String l=lesson.getText().toString().trim();
-        String end=ending.getText().toString().trim(); String g=String.valueOf(genre.getSelectedItem());
-        String a=String.valueOf(age.getSelectedItem()); String hero=n.isEmpty()?"آرین":n.split("[،, ]")[0];
-        String friend=n.contains("،")?n.substring(n.indexOf("،")+1).trim():"نیلا";
-        Random r=new Random();
-        String place=new String[]{"دهکده‌ای کنار دریا","جنگلی پر از نورهای رنگی","شهری شلوغ و آینده‌نگر","خانه‌ای قدیمی روی تپه","مدرسه‌ای عجیب در میان ابرها"}[r.nextInt(5)];
-        String object=new String[]{"یک کلید نقره‌ای","یک نقشه قدیمی","یک ساعت که زمان را متوقف می‌کرد","یک کتاب سخنگو","یک فانوس آبی"}[r.nextInt(5)];
-        StringBuilder b=new StringBuilder();
-        b.append("📖 ").append(t).append("\n\n");
-        b.append("در ").append(place).append("، ").append(hero).append(" روزی با یک راز عجیب روبه‌رو شد: ").append(object).append(" درست جلوی او ظاهر شد. ");
-        b.append("او اول فکر کرد این فقط یک اتفاق معمولی است، اما وقتی آن را لمس کرد، صدایی آرام گفت: «اگر شجاعت داشته باشی، پاسخ را پیدا می‌کنی.»\n\n");
-        b.append("آن شب، ").append(hero).append(" تصمیم گرفت راز را دنبال کند. ").append(friend).append(" هم همراهش شد و گفت: «دو نفری بهتر می‌توانیم از پسش بربیاییم.» ");
-        b.append("آن‌ها از مسیر باریکی گذشتند و به جایی رسیدند که هیچ‌کدام قبلاً ندیده بودند. در آنجا انتخاب سختی منتظرشان بود.\n\n");
-        b.append("نقطه عطف داستان زمانی رسید که ").append(hero).append(" فهمید پاسخ اصلی بیرون از خودش نیست؛ باید بین ترس و امید یکی را انتخاب کند. ");
-        b.append("او یک قدم جلو رفت و ").append(friend).append(" هم کنارش ایستاد. همین همکاری باعث شد راز ").append(object).append(" آشکار شود و راهی تازه پیش رویشان قرار بگیرد.\n\n");
-        if(g.contains("طنز")) b.append("البته وسط این ماجرا یک اتفاق خنده‌دار هم افتاد و همه چند دقیقه‌ای از خنده نمی‌توانستند حرف بزنند.\n\n");
-        if(g.contains("آموزشی")) b.append("🔎 نکته‌ای که ").append(hero).append(" یاد گرفت این بود که پرسیدن و امتحان کردن، راه رسیدن به پاسخ است.\n\n");
-        if(!l.isEmpty()) b.append("💡 پند و آموزش: ").append(l).append("\n\n");
-        if(poem.isChecked()) b.append("🎵 شعر:\n«هر جا که امیدی هست / راهی برای فرداست / با دلِ روشن و مهربان / دنیا همیشه زیباست»\n\n");
-        b.append("🏁 پایان: ").append(end.isEmpty()?"آن‌ها با آرامش به خانه برگشتند و فهمیدند بعضی از بهترین ماجراهای زندگی از یک انتخاب کوچک و شجاعانه شروع می‌شود.":end);
-        output.setText(b.toString()); prefs.edit().putString("last",b.toString()).apply(); status.setText("✅ داستان آماده شد — حالت آفلاین");
-        if(voiceMode)speak(output.getText().toString());
-    }
-
     void initTts(){try{nativeTts=new TextToSpeech(this,x->{if(x==TextToSpeech.SUCCESS){int rr=nativeTts.setLanguage(new Locale("fa","IR"));ttsReady=rr!=TextToSpeech.LANG_MISSING_DATA&&rr!=TextToSpeech.LANG_NOT_SUPPORTED;nativeTts.setSpeechRate(.9f);}});}catch(Exception ignored){}}
-    void initSpeech(){try{if(!SpeechRecognizer.isRecognitionAvailable(this))return;rec=SpeechRecognizer.createSpeechRecognizer(this);rec.setRecognitionListener(new RecognitionListener(){
+    void initSpeech(){try{if(Build.VERSION.SDK_INT>=23 && checkSelfPermission("android.permission.RECORD_AUDIO")!=android.content.pm.PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{"android.permission.RECORD_AUDIO"},77);return;} if(!SpeechRecognizer.isRecognitionAvailable(this))return;rec=SpeechRecognizer.createSpeechRecognizer(this);rec.setRecognitionListener(new RecognitionListener(){
         public void onReadyForSpeech(Bundle b){status.setText("🎙️ گوش می‌دهم…");}
         public void onBeginningOfSpeech(){} public void onRmsChanged(float r){} public void onBufferReceived(byte[] b){} public void onEndOfSpeech(){}
         public void onResults(Bundle b){ArrayList<String>a=b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);if(a!=null&&!a.isEmpty())voiceCommand(a.get(0));else if(voiceMode)listen();}
