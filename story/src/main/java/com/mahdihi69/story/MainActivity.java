@@ -305,7 +305,21 @@ public class MainActivity extends Activity { // Story Maker production build
             runOnUiThread(()->status.setText("✅ داستان با "+used+" ساخته شد"));
             return s;
         }catch(Exception e){last=e;}
-        throw last==null?new IOException("No provider"):last;
+        throw last==null?new IOException("NO_PROVIDER"):last;
+    }
+
+    String explainAiError(Exception e){
+        String m=e==null?"":String.valueOf(e.getMessage());
+        if(m.contains("key missing")) return "کلید API این سرویس در تنظیمات ساخت برنامه وجود ندارد";
+        if(m.contains("HTTP 401")||m.contains("HTTP 403")) return "کلید نامعتبر است یا دسترسی سرویس مجاز نیست";
+        if(m.contains("HTTP 429")) return "سهمیه یا اعتبار سرویس تمام شده است";
+        if(m.contains("HTTP 400")) return "درخواست یا نام مدل توسط سرویس رد شد";
+        if(m.contains("HTTP 5")) return "سرویس هوش مصنوعی موقتاً خطا دارد";
+        if(e instanceof UnknownHostException || m.contains("Unable to resolve host")) return "اینترنت یا دسترسی شبکه به سرویس برقرار نیست";
+        if(e instanceof SocketTimeoutException || m.toLowerCase(Locale.ROOT).contains("timeout")) return "پاسخ سرویس دیر رسید؛ دوباره تلاش کنید";
+        if(m.contains("empty response") || m.contains("missing content")) return "سرویس پاسخ متنی قابل استفاده نفرستاد";
+        if(m.startsWith("HTTP ")) return "خطای سرویس ("+m+")";
+        return "خطای اتصال یا تنظیمات سرویس";
     }
 
     void generate(){
@@ -328,7 +342,8 @@ public class MainActivity extends Activity { // Story Maker production build
                 runOnUiThread(()->{
                     output.setText(offline);
                     prefs.edit().putString("last",offline).apply();
-                    status.setText("⚠️ هوش مصنوعی آنلاین در دسترس نیست؛ داستان آفلاین ساخته شد. برای تولید هوشمند آنلاین باید سرویس سمت سرور تنظیم شود.");
+                    String detail = explainAiError(e);
+                    status.setText("⚠️ اتصال آنلاین ناموفق بود: " + detail + " | نسخه آفلاین نمایش داده شد.");
                     if(voiceMode)speak(offline);
                 });
             }
@@ -430,7 +445,7 @@ public class MainActivity extends Activity { // Story Maker production build
         if(code<200||code>=300)throw new IOException("HTTP "+code);
         return r;
     }
-    String post(String u,String k,String d)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setRequestMethod("POST");c.setConnectTimeout(15000);c.setReadTimeout(90000);c.setDoOutput(true);c.setRequestProperty("Content-Type","application/json");c.setRequestProperty("Authorization","Bearer "+k);try(OutputStream o=c.getOutputStream()){o.write(d.getBytes(StandardCharsets.UTF_8));}int code=c.getResponseCode();InputStream in=code>=200&&code<300?c.getInputStream():c.getErrorStream();String r=read(in);c.disconnect();if(code<200||code>=300)throw new IOException();return r;}
+    String post(String u,String k,String d)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setRequestMethod("POST");c.setConnectTimeout(15000);c.setReadTimeout(90000);c.setDoOutput(true);c.setRequestProperty("Content-Type","application/json");c.setRequestProperty("Authorization","Bearer "+k);try(OutputStream o=c.getOutputStream()){o.write(d.getBytes(StandardCharsets.UTF_8));}int code=c.getResponseCode();InputStream in=code>=200&&code<300?c.getInputStream():c.getErrorStream();String r=read(in);c.disconnect();if(code<200||code>=300)throw new IOException("HTTP "+code);return r;}
     byte[] bytes(String u,String k,String d)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setRequestMethod("POST");c.setConnectTimeout(15000);c.setReadTimeout(60000);c.setDoOutput(true);c.setRequestProperty("Content-Type","application/json");c.setRequestProperty("Authorization","Bearer "+k);try(OutputStream o=c.getOutputStream()){o.write(d.getBytes(StandardCharsets.UTF_8));}int code=c.getResponseCode();if(code<200||code>=300)throw new IOException();InputStream in=c.getInputStream();ByteArrayOutputStream o=new ByteArrayOutputStream();byte[] z=new byte[8192];int n;while((n=in.read(z))!=-1)o.write(z,0,n);in.close();c.disconnect();return o.toByteArray();}
     String read(InputStream in)throws Exception{BufferedReader r=new BufferedReader(new InputStreamReader(in,StandardCharsets.UTF_8));StringBuilder s=new StringBuilder();String z;while((z=r.readLine())!=null)s.append(z);return s.toString();}
     void play(File f){try{stopAudio();player=new MediaPlayer();player.setDataSource(f.getAbsolutePath());player.setOnCompletionListener(p->{p.release();player=null;if(voiceMode)listen();});player.prepare();player.start();}catch(Exception e){nativeSpeak(output.getText().toString());}}
