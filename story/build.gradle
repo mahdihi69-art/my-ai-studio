@@ -4,7 +4,9 @@ def qwenKey = System.getenv("QWEN_API_KEY") ?: ""
 def geminiKey = System.getenv("GEMINI_API_KEY") ?: ""
 def avalaiKey = System.getenv("AVALAI_API_KEY") ?: ""
 def deepseekKey = System.getenv("DEEPSEEK_API_KEY") ?: ""
-def esc = { String value -> value.replace('\\', '\\\\').replace('"', '\\"') }
+def esc = { String value -> value.replace('\\\\', '\\\\\\\\').replace('"', '\\\"') }
+def buildNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "31"
+def versionCodeValue = Math.max(31, buildNumber.toInteger())
 
 android {
     namespace 'com.mahdihi69.story'
@@ -13,8 +15,8 @@ android {
         applicationId "com.mahdihi69.storymaker.online"
         minSdk 23
         targetSdk 31
-        versionCode 31
-        versionName '3.1.0-online'
+        versionCode versionCodeValue
+        versionName "3.1.${versionCodeValue}-online"
         buildConfigField 'String', 'QWEN_API_KEY', '"' + esc(qwenKey) + '"'
         buildConfigField 'String', 'DEEPSEEK_API_KEY', '"' + esc(deepseekKey) + '"'
         buildConfigField 'String', 'GEMINI_API_KEY', '"' + esc(geminiKey) + '"'
