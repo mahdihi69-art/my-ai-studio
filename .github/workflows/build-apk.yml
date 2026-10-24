@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: story-maker-release
+  cancel-in-progress: false
+
 jobs:
   build-story:
     runs-on: ubuntu-latest
@@ -36,6 +40,7 @@ jobs:
 
       - name: Create stable debug signing key if missing
         run: |
+          set -euo pipefail
           mkdir -p "$HOME/.android"
           if [ ! -f "$HOME/.android/debug.keystore" ]; then
             keytool -genkeypair -v \
@@ -43,8 +48,9 @@ jobs:
               -storepass android -keypass android \
               -alias androiddebugkey \
               -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
+              -dname "CN=Story Maker Debug,O=Mahdihi,C=IR"
           fi
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -53,21 +59,29 @@ jobs:
         run: gradle :story:assembleDebug --no-daemon --stacktrace
 
       - name: Verify Story Maker APK
+        shell: bash
         run: |
           set -euo pipefail
           APK="story/build/outputs/apk/debug/story-debug.apk"
           test -s "$APK"
-          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose "$APK"
-          BADGING=$($ANDROID_HOME/build-tools/35.0.0/aapt dump badging "$APK")
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
+          BADGING=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK")
           echo "$BADGING"
-          echo "$BADGING" | grep "package: name='com.mahdihi69.storymaker.online'"
-          echo "$BADGING" | grep "sdkVersion:'23'"
-          echo "$BADGING" | grep "targetSdkVersion:'31'"
-          if echo "$BADGING" | grep -q "testOnly='true'"; then
+          grep -Fq "package: name='com.mahdihi69.storymaker.online'" <<< "$BADGING"
+          grep -Fq "sdkVersion:'23'" <<< "$BADGING"
+          grep -Fq "targetSdkVersion:'31'" <<< "$BADGING"
+          grep -Fq "versionCode='${GITHUB_RUN_NUMBER}'" <<< "$BADGING"
+          if grep -q "testOnly='true'" <<< "$BADGING"; then
             echo "ERROR: testOnly=true"
             exit 1
           fi
-          echo "STORY_APK_OK size=$(stat -c%s "$APK") bytes"
+          unzip -l "$APK" | grep -Eq 'classes([0-9]+)?\.dex'
+          SIZE=$(stat -c%s "$APK")
+          if [ "$SIZE" -lt 25000 ]; then
+            echo "ERROR: APK unexpectedly small ($SIZE bytes)"
+            exit 1
+          fi
+          echo "STORY_APK_OK size=$SIZE bytes"
 
       - name: Upload Story Maker APK
         uses: actions/upload-artifact@v4
@@ -81,5 +95,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="story-online-v3.1.${{ github.run_number }}"
-          gh release create "$TAG" story/build/outputs/apk/debug/story-debug.apk             --title "داستان‌ساز آنلاین $TAG" --generate-notes
+          TAG="story-online-v3.1.${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" story/build/outputs/apk/debug/story-debug.apk --title "داستان‌ساز آنلاین $TAG" --generate-notes
