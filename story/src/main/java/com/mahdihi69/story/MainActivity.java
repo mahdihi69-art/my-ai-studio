@@ -352,7 +352,7 @@ public class MainActivity extends Activity { // Story Maker production build
 
     String makeOfflineStory(String t){
         if(storyType!=null && storyType.getSelectedItemPosition()==1){
-            return "📚 حالت داستان واقعی و مستند انتخاب شده است.\\n\\nبرای اینکه رویداد، تاریخ، اشخاص و منابع را از خودم نسازم، این حالت بدون اتصال موفق به هوش مصنوعی آنلاین، داستان مستند تولید نمی‌کند.\\n\\nلطفاً اتصال آنلاین را فعال کنید و موضوع مشخص‌تری بنویسید؛ مثلاً نام یک رویداد تاریخی یا شخص واقعی. روایت مستند باید منابع قابل بررسی داشته باشد و هرجا اطلاعات تأیید نشده است، آن را صریح مشخص کند.\\n\\n⚠️ این پیام داستان نیست؛ جلوگیری از ارائه اطلاعات ساختگی است.";
+            return "📚 حالت داستان واقعی و مستند انتخاب شده است.\n\nبرای اینکه رویداد، تاریخ، اشخاص و منابع را از خودم نسازم، این حالت بدون اتصال موفق به هوش مصنوعی آنلاین، داستان مستند تولید نمی‌کند.\n\nلطفاً اتصال آنلاین را فعال کنید و موضوع مشخص‌تری بنویسید؛ مثلاً نام یک رویداد تاریخی یا شخص واقعی. روایت مستند باید منابع قابل بررسی داشته باشد و هرجا اطلاعات تأیید نشده است، آن را صریح مشخص کند.\n\n⚠️ این پیام داستان نیست؛ جلوگیری از ارائه اطلاعات ساختگی است.";
         }
         String who=chars.getText().toString().trim();
         if(who.isEmpty()) who="آرین و دوستش باران";
@@ -396,13 +396,18 @@ public class MainActivity extends Activity { // Story Maker production build
     }
 
     void initTts(){try{nativeTts=new TextToSpeech(this,x->{if(x==TextToSpeech.SUCCESS){int rr=nativeTts.setLanguage(new Locale("fa","IR"));ttsReady=rr!=TextToSpeech.LANG_MISSING_DATA&&rr!=TextToSpeech.LANG_NOT_SUPPORTED;nativeTts.setSpeechRate(.9f);}});}catch(Exception ignored){}}
-    void initSpeech(){try{if(Build.VERSION.SDK_INT>=23 && checkSelfPermission("android.permission.RECORD_AUDIO")!=android.content.pm.PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{"android.permission.RECORD_AUDIO"},77);return;} if(!SpeechRecognizer.isRecognitionAvailable(this))return;rec=SpeechRecognizer.createSpeechRecognizer(this);rec.setRecognitionListener(new RecognitionListener(){
+    void initSpeech(){try{if(Build.VERSION.SDK_INT>=23 && checkSelfPermission("android.permission.RECORD_AUDIO")!=android.content.pm.PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{"android.permission.RECORD_AUDIO"},77);return;} if(!SpeechRecognizer.isRecognitionAvailable(this)){if(status!=null)status.setText("تشخیص گفتار روی این گوشی در دسترس نیست.");return;} if(rec!=null)rec.destroy(); rec=SpeechRecognizer.createSpeechRecognizer(this);rec.setRecognitionListener(new RecognitionListener(){
         public void onReadyForSpeech(Bundle b){status.setText("🎙️ گوش می‌دهم…");}
         public void onBeginningOfSpeech(){} public void onRmsChanged(float r){} public void onBufferReceived(byte[] b){} public void onEndOfSpeech(){}
         public void onResults(Bundle b){ArrayList<String>a=b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);if(a!=null&&!a.isEmpty())voiceCommand(a.get(0));else if(voiceMode)listen();}
-        public void onError(int e){if(voiceMode)new Handler(getMainLooper()).postDelayed(()->listen(),600);}
+        public void onError(int e){if(!voiceMode)return; if(e==SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS){voiceMode=false;status.setText("اجازه میکروفون داده نشده است.");return;} if(Build.VERSION.SDK_INT>=31&&(e==SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED||e==SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE)){voiceMode=false;status.setText("تشخیص گفتار فارسی در سرویس گوشی فعال یا دانلود نشده است.");return;} new Handler(getMainLooper()).postDelayed(()->listen(),900);}
         public void onPartialResults(Bundle b){} public void onEvent(int e,Bundle b){}
     });}catch(Exception ignored){}}
+
+    @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){
+        super.onRequestPermissionsResult(requestCode,permissions,grantResults);
+        if(requestCode==77){if(grantResults.length>0&&grantResults[0]==android.content.pm.PackageManager.PERMISSION_GRANTED){initSpeech();status.setText("اجازه میکروفون فعال شد؛ دوباره دکمه گفت‌وگوی صوتی را بزنید.");}else{status.setText("برای فرمان صوتی باید اجازه میکروفون را بدهید.");}}
+    }
 
     void toggleVoice(){
         voiceMode=!voiceMode;
@@ -449,7 +454,11 @@ public class MainActivity extends Activity { // Story Maker production build
     byte[] bytes(String u,String k,String d)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setRequestMethod("POST");c.setConnectTimeout(15000);c.setReadTimeout(60000);c.setDoOutput(true);c.setRequestProperty("Content-Type","application/json");c.setRequestProperty("Authorization","Bearer "+k);try(OutputStream o=c.getOutputStream()){o.write(d.getBytes(StandardCharsets.UTF_8));}int code=c.getResponseCode();if(code<200||code>=300)throw new IOException();InputStream in=c.getInputStream();ByteArrayOutputStream o=new ByteArrayOutputStream();byte[] z=new byte[8192];int n;while((n=in.read(z))!=-1)o.write(z,0,n);in.close();c.disconnect();return o.toByteArray();}
     String read(InputStream in)throws Exception{BufferedReader r=new BufferedReader(new InputStreamReader(in,StandardCharsets.UTF_8));StringBuilder s=new StringBuilder();String z;while((z=r.readLine())!=null)s.append(z);return s.toString();}
     void play(File f){try{stopAudio();player=new MediaPlayer();player.setDataSource(f.getAbsolutePath());player.setOnCompletionListener(p->{p.release();player=null;if(voiceMode)listen();});player.prepare();player.start();}catch(Exception e){nativeSpeak(output.getText().toString());}}
-    void nativeSpeak(String s){if(!ttsReady||nativeTts==null)return;nativeTts.stop();nativeTts.speak(s,TextToSpeech.QUEUE_FLUSH,null,"story");}
+    void nativeSpeak(String s){
+        if(!ttsReady||nativeTts==null){if(status!=null)status.setText("صدای فارسی روی گوشی آماده نیست؛ زبان فارسی را در تنظیمات تبدیل متن به گفتار نصب کنید.");return;}
+        nativeTts.stop(); if(s==null||s.trim().isEmpty())return;
+        int pos=0; boolean first=true; while(pos<s.length()){int end=Math.min(pos+3000,s.length()); if(end<s.length()){int cut=s.lastIndexOf(' ',end); if(cut>pos+1500)end=cut;} String part=s.substring(pos,end).trim(); if(!part.isEmpty()){nativeTts.speak(part,first?TextToSpeech.QUEUE_FLUSH:TextToSpeech.QUEUE_ADD,null,"story_"+pos);first=false;} pos=end;}
+    }
     void stopAudio(){if(player!=null){try{player.stop();}catch(Exception ignored){}player.release();player=null;}if(nativeTts!=null)nativeTts.stop();}
     void setBg(Uri u){try{InputStream in=getContentResolver().openInputStream(u);Bitmap b=BitmapFactory.decodeStream(in);if(in!=null)in.close();if(b==null)return;getWindow().getDecorView().setBackground(new android.graphics.drawable.BitmapDrawable(getResources(),b));}catch(Exception ignored){}}
     @Override protected void onActivityResult(int r,int c,Intent d){super.onActivityResult(r,c,d);if(r==PICK&&c==RESULT_OK&&d!=null)setBg(d.getData());}
