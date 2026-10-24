@@ -38,17 +38,12 @@ jobs:
           path: ~/.android/debug.keystore
           key: story-maker-debug-signing-key-v1
 
-      - name: Create stable debug signing key if missing
+      - name: Require the previously saved signing key
         run: |
           set -euo pipefail
-          mkdir -p "$HOME/.android"
-          if [ ! -f "$HOME/.android/debug.keystore" ]; then
-            keytool -genkeypair -v \
-              -keystore "$HOME/.android/debug.keystore" \
-              -storepass android -keypass android \
-              -alias androiddebugkey \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=Story Maker Debug,O=Mahdihi,C=IR"
+          if [ ! -s "$HOME/.android/debug.keystore" ]; then
+            echo "::error::The stable signing key cache is missing. Refusing to create a different key because that would break app updates."
+            exit 1
           fi
           keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey
 
