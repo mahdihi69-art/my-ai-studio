@@ -296,20 +296,30 @@ public class MainActivity extends Activity { // Story Maker production build
         else if(selected.startsWith("Qwen")) order.add("Qwen");
         else if(selected.startsWith("Gemini")) order.add("Gemini");
         else if(selected.startsWith("AvalAI")) order.add("AvalAI");
-        else { order.add("DeepSeek"); order.add("Qwen"); order.add("Gemini"); order.add("AvalAI"); }
+        else {
+            // Auto mode: only try providers that actually have a key in this build.
+            if(!gkey().isEmpty()) order.add("Gemini");
+            if(!qkey().isEmpty()) order.add("Qwen");
+            if(!dkey().isEmpty()) order.add("DeepSeek");
+            if(!akey().isEmpty()) order.add("AvalAI");
+            if(order.isEmpty()) throw new IOException("NO_API_KEYS: هیچ کلید سرویس هوش مصنوعی در این نسخه تنظیم نشده است");
+        }
         Exception last=null;
+        String lastProvider="";
         for(String p:order)try{
             runOnUiThread(()->status.setText("🔗 اتصال "+p+" در حال پاسخ‌گویی…"));
             String s=aiCall(p,prompt);
             final String used=p;
             runOnUiThread(()->status.setText("✅ داستان با "+used+" ساخته شد"));
             return s;
-        }catch(Exception e){last=e;}
-        throw last==null?new IOException("NO_PROVIDER"):last;
+        }catch(Exception e){last=e;lastProvider=p;}
+        if(last!=null) throw new IOException("آخرین سرویس امتحان‌شده ("+lastProvider+") خطا داد: "+last.getMessage(),last);
+        throw new IOException("NO_PROVIDER: سرویس قابل استفاده‌ای انتخاب نشده است");
     }
 
     String explainAiError(Exception e){
         String m=e==null?"":String.valueOf(e.getMessage());
+        if(m.contains("NO_API_KEYS")) return "هیچ کلید API معتبری در نسخه فعلی تنظیم نشده؛ در تنظیمات Secrets گیت‌هاب باید کلید Gemini یا سرویس دیگر ثبت شود";
         if(m.contains("key missing")) return "کلید API این سرویس در تنظیمات ساخت برنامه وجود ندارد";
         if(m.contains("HTTP 401")||m.contains("HTTP 403")) return "کلید نامعتبر است یا دسترسی سرویس مجاز نیست";
         if(m.contains("HTTP 429")) return "سهمیه یا اعتبار سرویس تمام شده است";
