@@ -292,28 +292,35 @@ public class MainActivity extends Activity { // Story Maker production build
     String generateWithBridge(String prompt)throws Exception{
         String selected=String.valueOf(provider.getSelectedItem());
         ArrayList<String> order=new ArrayList<>();
+        // Respect the requested provider first, but never stop just because its key is absent.
         if(selected.startsWith("DeepSeek")) order.add("DeepSeek");
         else if(selected.startsWith("Qwen")) order.add("Qwen");
         else if(selected.startsWith("Gemini")) order.add("Gemini");
         else if(selected.startsWith("AvalAI")) order.add("AvalAI");
-        else {
-            // Auto mode: only try providers that actually have a key in this build.
-            if(!gkey().isEmpty()) order.add("Gemini");
-            if(!qkey().isEmpty()) order.add("Qwen");
-            if(!dkey().isEmpty()) order.add("DeepSeek");
-            if(!akey().isEmpty()) order.add("AvalAI");
-            if(order.isEmpty()) throw new IOException("NO_API_KEYS: هیچ کلید سرویس هوش مصنوعی در این نسخه تنظیم نشده است");
-        }
+        // Add configured providers as fallbacks. This makes a stale/missing direct-provider
+        // selection recover automatically when another provider is configured in the APK.
+        if(!gkey().isEmpty()&&!order.contains("Gemini")) order.add("Gemini");
+        if(!qkey().isEmpty()&&!order.contains("Qwen")) order.add("Qwen");
+        if(!dkey().isEmpty()&&!order.contains("DeepSeek")) order.add("DeepSeek");
+        if(!akey().isEmpty()&&!order.contains("AvalAI")) order.add("AvalAI");
+        if(order.isEmpty()) throw new IOException("NO_API_KEYS: هیچ کلید سرویس هوش مصنوعی در این نسخه تنظیم نشده است");
         Exception last=null;
         String lastProvider="";
-        for(String p:order)try{
-            runOnUiThread(()->status.setText("🔗 اتصال "+p+" در حال پاسخ‌گویی…"));
-            String s=aiCall(p,prompt);
-            final String used=p;
-            runOnUiThread(()->status.setText("✅ داستان با "+used+" ساخته شد"));
-            return s;
-        }catch(Exception e){last=e;lastProvider=p;}
-        if(last!=null) throw new IOException("آخرین سرویس امتحان‌شده ("+lastProvider+") خطا داد: "+last.getMessage(),last);
+        for(String p:order) {
+            // Skip providers without a configured key, even when explicitly selected.
+            if((p.equals("Gemini")&&gkey().isEmpty())||
+               (p.equals("Qwen")&&qkey().isEmpty())||
+               (p.equals("DeepSeek")&&dkey().isEmpty())||
+               (p.equals("AvalAI")&&akey().isEmpty())) continue;
+            try{
+                runOnUiThread(()->status.setText("🔗 اتصال "+p+" در حال پاسخ‌گویی…"));
+                String s=aiCall(p,prompt);
+                final String used=p;
+                runOnUiThread(()->status.setText("✅ داستان با "+used+" ساخته شد"));
+                return s;
+            }catch(Exception e){last=e;lastProvider=p;}
+        }
+        if(last!=null) throw new IOException("همه سرویس‌های پیکربندی‌شده ناموفق بودند؛ آخرین سرویس ("+lastProvider+"): "+last.getMessage(),last);
         throw new IOException("NO_PROVIDER: سرویس قابل استفاده‌ای انتخاب نشده است");
     }
 
